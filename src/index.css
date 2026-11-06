@@ -1,0 +1,75 @@
+/* 디자인 토큰: 핑크·라벤더 레트로 게임 스타일 (PRD 표현 원칙).
+   디자이너 시안이 나오면 이 값만 바꾼다. 기준 해상도 1920×1080, 최소 1366×768. */
+:root {
+  --c-bg: #fff6fb;
+  --c-surface: #ffffff;
+  --c-ink: #2b1f3a;
+  --c-ink-soft: #6b5d80;
+  --c-pink: #ff7eb6;
+  --c-pink-deep: #e0559a;
+  --c-lavender: #b9a6ff;
+  --c-lavender-soft: #ece6ff;
+  --c-ok: #3bb37a;
+  --c-warn: #f2a93b;
+  --c-danger: #e5484d;
+  --radius: 16px;
+  --shadow: 0 4px 0 rgba(43, 31, 58, 0.15);
+  --font: 'Pretendard', system-ui, -apple-system, sans-serif;
+
+  font-family: var(--font);
+  color: var(--c-ink);
+  background: var(--c-bg);
+}
+
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; height: 100%; min-width: 1366px; }
+button { font: inherit; cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: 0.5; }
+
+.page { min-height: 100%; padding: 32px 48px; display: flex; flex-direction: column; gap: 24px; }
+.page-center { align-items: center; justify-content: center; text-align: center; }
+.title { font-size: 40px; font-weight: 800; margin: 0; }
+.subtitle { color: var(--c-ink-soft); margin: 0; }
+.row { display: flex; gap: 16px; align-items: center; }
+.grid { display: grid; gap: 16px; }
+
+.card {
+  background: var(--c-surface);
+  border: 2px solid var(--c-ink);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+.card.selectable { cursor: pointer; text-align: left; }
+.card.selected { background: var(--c-lavender-soft); border-color: var(--c-pink-deep); }
+
+.btn {
+  border: 2px solid var(--c-ink);
+  border-radius: 999px;
+  padding: 12px 28px;
+  font-weight: 700;
+  background: var(--c-surface);
+  box-shadow: var(--shadow);
+}
+.btn-primary { background: var(--c-pink); color: #fff; }
+.btn-lg { font-size: 20px; padding: 16px 40px; }
+
+.badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--c-lavender-soft);
+  color: var(--c-ink-soft);
+}
+.badge-warn { background: #fff1d6; color: #8a5a00; }
+
+.muted { color: var(--c-ink-soft); }
+input.text {
+  border: 2px solid var(--c-ink);
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 18px;
+  width: 320px;
+}
