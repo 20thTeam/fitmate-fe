@@ -8,7 +8,7 @@ import type { Theme } from '../Backdrop'
 import Environment from './Environment'
 import Characters3D from './Characters3D'
 import { PALETTES } from './palette'
-import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
+import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
 
 /** tour: 대기 중 정면 + 드래그로 둘러보기·휠로 확대, front: 운동 중 스크린 정면 고정. 구도는 Figma 1:5 */
 export type CameraView = 'tour' | 'front'
@@ -24,18 +24,19 @@ const BASE_DIST = 16.4
 const DESIGN_ASPECT = 1440 / 1024
 const isReducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 
-// 드래그로 둘러보기 (대기 화면만). 좌우는 최대 30°, 위아래는 조금만 움직이고,
-// 손을 떼고 잠시 뒤 시안 정면 구도로 돌아온다.
-const DRAG_MAX_AZIMUTH = (30 * Math.PI) / 180
+// 드래그로 둘러보기 (대기 화면만). 좌우는 한 바퀴 다 돌 수 있고, 위아래는 조금만 움직인다.
+// 손을 떼고 잠시 뒤 가까운 쪽으로 돌아 시안 정면 구도로 돌아온다.
 const DRAG_MIN_PITCH = -0.03
 const DRAG_MAX_PITCH = 0.12
-const RETURN_DELAY_MS = 1500
+const RETURN_DELAY_MS = 4000
 // 휠 확대·축소 (대기 화면만). 1 = 시안 구도 거리. 확대한 거리는 운동을 시작할 때 기본으로 돌아간다.
 const ZOOM_MIN = 0.7
 const ZOOM_MAX = 1.35
 const ZOOM_SPEED = 0.0015
 
 const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v))
+/** 각도를 -π~π로 맞춘다 (정면으로 돌아올 때 가까운 쪽으로 돌게) */
+const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 
 function CameraRig({ view }: { view: CameraView }) {
   const camera = useThree((s) => s.camera)
@@ -64,6 +65,7 @@ function CameraRig({ view }: { view: CameraView }) {
       d.isDragging = true
       d.startX = e.clientX
       d.startY = e.clientY
+      d.azimuth = wrapAngle(d.azimuth)
       d.baseAzimuth = d.azimuth
       d.basePitch = d.pitch
       el.classList.add('is-dragging')
@@ -72,7 +74,7 @@ function CameraRig({ view }: { view: CameraView }) {
     const handleMove = (e: PointerEvent) => {
       if (!d.isDragging) return
       // 무대를 잡고 끄는 느낌: 오른쪽으로 끌면 카메라는 왼쪽으로 돈다
-      d.azimuth = clamp(d.baseAzimuth - ((e.clientX - d.startX) / el.clientWidth) * 1.6, -DRAG_MAX_AZIMUTH, DRAG_MAX_AZIMUTH)
+      d.azimuth = d.baseAzimuth - ((e.clientX - d.startX) / el.clientWidth) * Math.PI * 1.6
       d.pitch = clamp(d.basePitch + ((e.clientY - d.startY) / el.clientHeight) * 0.5, DRAG_MIN_PITCH, DRAG_MAX_PITCH)
     }
     const handleUp = (e: PointerEvent) => {
@@ -110,6 +112,7 @@ function CameraRig({ view }: { view: CameraView }) {
     // 운동 중이거나 손을 뗀 지 잠시 지나면 정면으로 천천히 돌아온다
     if (!canDrag || (!d.isDragging && performance.now() - d.releasedAt > RETURN_DELAY_MS)) {
       const back = 1 - Math.exp(-delta * 1.5)
+      d.azimuth = wrapAngle(d.azimuth)
       d.azimuth -= d.azimuth * back
       d.pitch -= d.pitch * back
     }
@@ -157,6 +160,8 @@ function OverlayProjector({ screenRef, tagRefs, tagIds, rowZ }: OverlayProps) {
       SCREEN_CORNERS.forEach((corner, i) => {
         isVisible = projectToPx(corner, camera, size.width, size.height, temp, quad, i * 2) && isVisible
       })
+      // 스크린 뒤로 돌아가면 내용이 거울처럼 비치지 않게 숨긴다
+      if (camera.position.z < SCREEN_FACE_Z) isVisible = false
       screen.style.visibility = isVisible ? 'visible' : 'hidden'
       if (isVisible) screen.style.transform = quadToMatrix3d(quad, SCREEN_PX_W, SCREEN_PX_H)
     }
@@ -164,7 +169,8 @@ function OverlayProjector({ screenRef, tagRefs, tagIds, rowZ }: OverlayProps) {
       const tag = tagRefs.current.get(id)
       if (!tag) return
       point.set(figureX(i, tagIds.length), TAG_Y, rowZ)
-      const isVisible = projectToPx(point, camera, size.width, size.height, temp, quad)
+      // 캐릭터는 스크린 앞에 서 있어서 스크린 뒤에서는 가려진다
+      const isVisible = projectToPx(point, camera, size.width, size.height, temp, quad) && camera.position.z >= SCREEN_FACE_Z
       tag.style.visibility = isVisible ? 'visible' : 'hidden'
       tag.style.transform = `translate(${quad[0]}px, ${quad[1]}px) translate(-50%, -50%)`
     })
