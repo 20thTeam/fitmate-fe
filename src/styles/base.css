@@ -8,7 +8,11 @@ body {
   color: var(--c-text);
   background: #2b2735;
   -webkit-font-smoothing: antialiased;
+  /* 3D 무대를 끌거나 패널을 누를 때 글자가 파랗게 선택되지 않게 한다. 입력칸은 아래에서 다시 허용 */
+  -webkit-user-select: none;
+  user-select: none;
 }
+input, textarea, [contenteditable='true'] { -webkit-user-select: text; user-select: text; }
 
 button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
 button:disabled { cursor: not-allowed; }
