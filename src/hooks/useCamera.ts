@@ -48,6 +48,38 @@ export function useCamera() {
   return { stream, state, devices, deviceId, start, stop, isOn: state === 'on' }
 }
 
+export type CameraPermission = 'granted' | 'denied' | 'prompt' | 'unknown'
+
+/** 브라우저가 기억하는 카메라 권한. 물어볼 수 없는 브라우저는 unknown (요청해 봐야 안다) */
+export async function queryCameraPermission(): Promise<CameraPermission> {
+  try {
+    const status = await navigator.permissions.query({ name: 'camera' as PermissionName })
+    return status.state
+  } catch {
+    return 'unknown'
+  }
+}
+
+/** 사용자가 브라우저 설정에서 카메라를 허용으로 바꾸면 알려준다. 해제 함수를 돌려준다. */
+export function watchCameraPermission(onGranted: () => void) {
+  let status: PermissionStatus | null = null
+  let isStopped = false
+  const handleChange = () => {
+    if (status?.state === 'granted') onGranted()
+  }
+  navigator.permissions?.query({ name: 'camera' as PermissionName })
+    .then((s) => {
+      if (isStopped) return
+      status = s
+      s.addEventListener('change', handleChange)
+    })
+    .catch(() => {})
+  return () => {
+    isStopped = true
+    status?.removeEventListener('change', handleChange)
+  }
+}
+
 export const CAMERA_MESSAGE: Record<CameraState, string> = {
   off: '카메라가 꺼져 있어요',
   requesting: '카메라 권한을 요청하고 있어요…',
