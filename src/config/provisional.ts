@@ -34,6 +34,33 @@ export const PROVISIONAL_GOOD_RATIO = 0.9
 /** 미정: 상향 폭과 안전 상한 */
 export const PROVISIONAL_INCREASE = { repsRatio: 0.15, secondsStep: 10, maxReps: 30, maxSeconds: 60 }
 
+/**
+ * 미정: 동작 1회 인정 기준 (F-XNIIJM, PL-OEFFCN). 관절 3D 각도(도)와 거리 비율.
+ * 개발팀이 시연 운동으로 맞춘 임시값이라 실제 촬영 사례로 검증한 뒤 PM 승인을 받아야 한다.
+ * 각 운동은 '시작 자세 → 목표 자세 → 시작 자세'를 1회로 센다.
+ */
+export const PROVISIONAL_POSE_RULES = {
+  /** 관절 인식 신뢰도. 이보다 낮으면 판정 보류 (근거 없는 카운트 금지) */
+  minVisibility: 0.5,
+  /** 같은 동작이 두 번 세지지 않게 하는 최소 간격 */
+  minRepMs: 500,
+  /** 무릎 각도: 서 있을 때 → 앉았을 때 */
+  squat: { kneeStand: 160, kneeDown: 110 },
+  /** 두 무릎 중 더 굽힌 쪽 각도 */
+  lunge: { kneeStand: 160, kneeDown: 110 },
+  /** 몸통이 세로에서 기운 각도. 무릎을 kneeMin보다 많이 굽히면 스쿼트로 본다 */
+  hipHinge: { leanStand: 15, leanDown: 45, kneeMin: 100 },
+  /** 팔 각도(엉덩이-어깨-손목), 발 간격 ÷ 어깨 너비 */
+  jumpingJack: { armDown: 45, armUp: 140, feetClosed: 0.9, feetOpen: 1.5 },
+  /** 엉덩이 각도. 다리마다 1회씩 센다 */
+  highKnees: { hipStand: 165, hipUp: 115, minRepMs: 200 },
+  /**
+   * 어깨-엉덩이-발목이 lineMin 이상이면 일직선. 화면에서 몸이 가로선과 maxBodyTilt 이하,
+   * 위팔이 세로선과 maxArmTilt 이하이면 엎드려 팔로 받친 자세. settleMs 동안 유지된 뒤부터 센다
+   */
+  plank: { lineMin: 155, maxBodyTilt: 30, maxArmTilt: 40, settleMs: 700 },
+}
+
 /** 미정: 운동 간 휴식 길이. 와이어프레임 v3 예시(00:30)를 임시로 사용. 자동 전환은 하지 않는다. */
 export const PROVISIONAL_REST_SECONDS = 30
 

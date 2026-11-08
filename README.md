@@ -38,6 +38,9 @@ src/
     useCamera.ts         카메라 권한·스트림·장치 선택
     useRoom.ts           실시간 운동방 입장·참가자·응원
     useWorkout.ts        내 운동 진행 (세트·유효 횟수·일시정지 제외 시간)
+    usePose.ts           카메라 영상에서 관절 인식 (MediaPipe, 브라우저 안에서만)
+    useRepCounting.ts    관절 → 운동별 판정 → 유효 횟수·자세 피드백 반영
+  lib/pose/              관절 각도 계산과 운동별 1회 인정 판정 (기준값은 config/provisional.ts)
   components/            ui(공통 조각), Backdrop(배경), CameraCheck, EnterLoading, GoalIcon
     room/                운동방 조각: Scene(3D 무대+패널, 실패 시 2D 그림), ModeTabs, ParticipantPanel, RoutinePanels,
                          SummaryBar, GuideScreen, CharacterFloor, WorkoutHud, ProgressRing, InviteModal
