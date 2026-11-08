@@ -18,7 +18,6 @@ import ParticipantPanel, { OnlineCount } from '../components/room/ParticipantPan
 import { RoutineOrderPanel, RoutineProgressPanel } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
-import CharacterFloor from '../components/room/CharacterFloor'
 import WorkoutHud from '../components/room/WorkoutHud'
 import InviteModal from '../components/room/InviteModal'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
@@ -242,7 +241,10 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
       screen={phase === 'lobby'
         ? <GuideScreen idleTitle="친구들이 모이면 함께 시작해요" idleDesc={`지금 ${room.participants.length}명 접속 중 · 준비되면 '시작하기'를 눌러 주세요`} />
         : <GuideScreen exerciseId={phase === 'rest' ? next?.exerciseId : item.exerciseId} name={phase === 'rest' ? next?.name : item.name} />}
-      floor={<CharacterFloor theme="friend" participants={room.participants} selfId={profile.userId} onCheer={handleCheer} />}
+      participants={room.participants}
+      selfId={profile.userId}
+      onCheer={handleCheer}
+      view={phase === 'play' || phase === 'rest' ? 'front' : 'tour'}
     >
       <Logo />
 

@@ -18,7 +18,6 @@ import ParticipantPanel from '../components/room/ParticipantPanel'
 import { RoutineOrderPanel, RoutineProgressPanel } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
-import CharacterFloor from '../components/room/CharacterFloor'
 import WorkoutHud from '../components/room/WorkoutHud'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
@@ -197,7 +196,11 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
     <Scene
       theme="public"
       screen={<GuideScreen exerciseId={phase === 'play' ? SUNSET_EXERCISE.exerciseId : undefined} name={SUNSET_EXERCISE.name} idleTitle="선셋 에어로빅이 열렸어요!" idleDesc={`지금 ${room.participants.length}명 참가 중 · 준비되면 각자 시작해요`} />}
-      floor={<CharacterFloor theme="public" participants={room.participants} selfId={profile.userId} onCheer={handleCheer} />}
+      participants={room.participants}
+      selfId={profile.userId}
+      maxShown={SUNSET_SHOWN}
+      onCheer={handleCheer}
+      view={phase === 'play' ? 'front' : 'tour'}
     >
       <Logo />
       <ModeTabs active="public" />

@@ -39,8 +39,9 @@ src/
     useRoom.ts           실시간 운동방 입장·참가자·응원
     useWorkout.ts        내 운동 진행 (세트·유효 횟수·일시정지 제외 시간)
   components/            ui(공통 조각), Backdrop(배경), CameraCheck, EnterLoading, GoalIcon
-    room/                운동방 조각: Scene(배경+스크린), ModeTabs, ParticipantPanel, RoutinePanels,
+    room/                운동방 조각: Scene(3D 무대+패널, 실패 시 2D 그림), ModeTabs, ParticipantPanel, RoutinePanels,
                          SummaryBar, GuideScreen, CharacterFloor, WorkoutHud, ProgressRing, InviteModal
+    three/               3D 운동방: Room3D(캔버스·카메라), Environment(무대·스크린·나무), Characters3D, layout(스크린 DOM 겹치기)
   styles/                디자인 시스템: tokens.css(색·모양 값, friend/public 테마), base.css, components.css
   assets/                Figma 시안에서 받은 배경·아이콘·캐릭터 그림
   pages/                 화면 (유저플로우 v5 순서)

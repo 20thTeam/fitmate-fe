@@ -1,0 +1,59 @@
+// 3D 운동방 배치 값과, 3D 좌표 위에 DOM(스크린 내용·이름표)을 겹치는 계산.
+// 스크린 내용은 3D 안이 아니라 같은 React 트리의 DOM이라 YouTube iframe이 다시 로드되지 않는다.
+import { Vector3, type Camera } from 'three'
+
+/** 스크린 가운데 위치. 카메라도 이 근처를 바라본다. */
+export const SCREEN_CENTER: [number, number, number] = [0, 3.1, -2.6]
+export const SCREEN_W = 8.4
+export const SCREEN_H = 4.6
+/** 스크린 안 DOM 크기(px). 실제 화면 크기는 카메라 위치에 따라 matrix3d로 늘이고 줄인다. */
+export const SCREEN_PX_W = 640
+export const SCREEN_PX_H = Math.round((SCREEN_PX_W * SCREEN_H) / SCREEN_W)
+/** 스크린 판 앞면 z (틀 두께의 절반 + 조금) */
+export const SCREEN_FACE_Z = SCREEN_CENTER[2] + 0.16
+
+export const BODY_R = 0.55
+export const ROW_Z = 1.4
+const GAP = 1.75
+export const TAG_Y = BODY_R * 2 + 0.5
+
+/** n명 중 i번째 캐릭터의 x 위치 (가운데 정렬) */
+export const figureX = (i: number, n: number) => (i - (n - 1) / 2) * GAP
+
+/** 스크린 네 모서리 (왼위 → 오른위 → 오른아래 → 왼아래) */
+export const SCREEN_CORNERS = [
+  new Vector3(SCREEN_CENTER[0] - SCREEN_W / 2, SCREEN_CENTER[1] + SCREEN_H / 2, SCREEN_FACE_Z),
+  new Vector3(SCREEN_CENTER[0] + SCREEN_W / 2, SCREEN_CENTER[1] + SCREEN_H / 2, SCREEN_FACE_Z),
+  new Vector3(SCREEN_CENTER[0] + SCREEN_W / 2, SCREEN_CENTER[1] - SCREEN_H / 2, SCREEN_FACE_Z),
+  new Vector3(SCREEN_CENTER[0] - SCREEN_W / 2, SCREEN_CENTER[1] - SCREEN_H / 2, SCREEN_FACE_Z),
+]
+
+/** 월드 좌표 → 캔버스 px. 카메라 뒤면 false. out에 [x, y]를 쓴다. */
+export function projectToPx(world: Vector3, camera: Camera, width: number, height: number, temp: Vector3, out: number[], offset = 0) {
+  temp.copy(world).project(camera)
+  out[offset] = ((temp.x + 1) / 2) * width
+  out[offset + 1] = ((1 - temp.y) / 2) * height
+  return temp.z < 1
+}
+
+/**
+ * w×h 사각형을 네 점(quad: x0,y0,…,x3,y3)에 맞추는 CSS matrix3d (원근 변환).
+ * transform-origin은 0 0 이어야 한다.
+ */
+export function quadToMatrix3d(quad: number[], w: number, h: number) {
+  const [x0, y0, x1, y1, x2, y2, x3, y3] = quad
+  const dx1 = x1 - x2
+  const dx2 = x3 - x2
+  const dx3 = x0 - x1 + x2 - x3
+  const dy1 = y1 - y2
+  const dy2 = y3 - y2
+  const dy3 = y0 - y1 + y2 - y3
+  const den = dx1 * dy2 - dx2 * dy1
+  const g = den === 0 ? 0 : (dx3 * dy2 - dx2 * dy3) / den
+  const hh = den === 0 ? 0 : (dx1 * dy3 - dx3 * dy1) / den
+  const a = x1 - x0 + g * x1
+  const b = x3 - x0 + hh * x3
+  const d = y1 - y0 + g * y1
+  const e = y3 - y0 + hh * y3
+  return `matrix3d(${a / w},${d / w},0,${g / w},${b / h},${e / h},0,${hh / h},0,0,1,0,${x0},${y0},0,1)`
+}
