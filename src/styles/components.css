@@ -63,6 +63,9 @@
 /* 3D 캔버스·2D 그림이 들어가는 층. 스크린 DOM(drei Html)이 패널 위로 올라오지 않게 층을 따로 만든다 */
 .scene-stage { position: absolute; inset: 0; z-index: 0; }
 .scene-canvas { position: absolute !important; inset: 0; }
+/* 대기 화면에서 무대를 잡고 돌릴 수 있다는 표시 */
+.scene-canvas canvas.is-draggable { cursor: grab; touch-action: none; }
+.scene-canvas canvas.is-dragging { cursor: grabbing; }
 /* 3D 스크린 위에 겹치는 DOM. 위치·모양은 Room3D가 매 프레임 matrix3d로 정한다 */
 .screen-3d {
   position: absolute;

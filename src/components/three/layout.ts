@@ -2,20 +2,25 @@
 // 스크린 내용은 3D 안이 아니라 같은 React 트리의 DOM이라 YouTube iframe이 다시 로드되지 않는다.
 import { Vector3, type Camera } from 'three'
 
+// Figma 1:5: 스크린 아랫변이 무대 바닥에 거의 닿고, 가로:세로가 약 2:1
+export const SCREEN_W = 8.8
+export const SCREEN_H = 4.3
 /** 스크린 가운데 위치. 카메라도 이 근처를 바라본다. */
-export const SCREEN_CENTER: [number, number, number] = [0, 3.1, -2.6]
-export const SCREEN_W = 8.4
-export const SCREEN_H = 4.6
+export const SCREEN_CENTER: [number, number, number] = [0, 0.4 + SCREEN_H / 2, -2.6]
 /** 스크린 안 DOM 크기(px). 실제 화면 크기는 카메라 위치에 따라 matrix3d로 늘이고 줄인다. */
 export const SCREEN_PX_W = 640
 export const SCREEN_PX_H = Math.round((SCREEN_PX_W * SCREEN_H) / SCREEN_W)
 /** 스크린 판 앞면 z (틀 두께의 절반 + 조금) */
 export const SCREEN_FACE_Z = SCREEN_CENTER[2] + 0.16
 
-export const BODY_R = 0.55
-export const ROW_Z = 1.4
-const GAP = 1.75
-export const TAG_Y = BODY_R * 2 + 0.5
+export const BODY_R = 0.36
+/**
+ * 캐릭터 줄 위치. 스크린 아랫변과 하단 패널 사이에 보이게 둔다.
+ * 대기 화면은 하단 패널이 얇아 앞쪽에, 운동 중에는 패널이 커서 스크린 바로 앞에 세운다.
+ */
+export const ROW_Z = { tour: 4.3, front: 0.6 } as const
+const GAP = 1.4
+export const TAG_Y = BODY_R * 2 + 0.3
 
 /** n명 중 i번째 캐릭터의 x 위치 (가운데 정렬) */
 export const figureX = (i: number, n: number) => (i - (n - 1) / 2) * GAP

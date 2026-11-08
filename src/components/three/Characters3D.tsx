@@ -8,7 +8,7 @@ import { BufferAttribute, Color, SphereGeometry, type Group, type Mesh } from 't
 import type { Participant } from '../../types/domain'
 import { characterOf } from '../../config/characters'
 
-import { BODY_R, ROW_Z, figureX } from './layout'
+import { BODY_R, figureX } from './layout'
 
 /** 위→아래 그라데이션을 꼭짓점 색으로 칠한 공 (2D 캐릭터 그림과 같은 색) */
 function useGradientBody(characterId: string) {
@@ -34,12 +34,13 @@ function useGradientBody(characterId: string) {
 interface FigureProps {
   participant: Participant
   x: number
+  z: number
   index: number
   isSelf: boolean
   onCheer?: (p: Participant) => void
 }
 
-function Figure({ participant, x, index, isSelf, onCheer }: FigureProps) {
+function Figure({ participant, x, z, index, isSelf, onCheer }: FigureProps) {
   const body = useGradientBody(participant.characterId)
   const rootRef = useRef<Group>(null)
   const bodyRef = useRef<Mesh>(null)
@@ -54,7 +55,7 @@ function Figure({ participant, x, index, isSelf, onCheer }: FigureProps) {
     const t = state.clock.elapsedTime + index * 0.7
     if (isExercising) {
       const bounce = Math.abs(Math.sin(t * 3.2))
-      root.position.y = bounce * 0.22
+      root.position.y = bounce * BODY_R * 0.4
       mesh.scale.set(1 + (1 - bounce) * 0.08, 0.92 + bounce * 0.1, 1 + (1 - bounce) * 0.08)
     } else {
       root.position.y = 0
@@ -63,40 +64,42 @@ function Figure({ participant, x, index, isSelf, onCheer }: FigureProps) {
     }
   })
 
-  const setCursor = (cursor: string) => {
-    if (canCheer) document.body.style.cursor = cursor
+  // 캔버스의 기본 커서(드래그용 grab)를 캐릭터 위에서만 손가락으로 바꾼다
+  const setCursor = (target: EventTarget | null, cursor: string) => {
+    if (canCheer && target instanceof HTMLElement) target.style.cursor = cursor
   }
 
   return (
-    <group position={[x, 0, ROW_Z]}>
+    <group position={[x, 0, z]}>
       {isSelf && (
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
-          <ringGeometry args={[0.62, 0.74, 40]} />
+          <ringGeometry args={[BODY_R * 1.13, BODY_R * 1.35, 40]} />
           <meshBasicMaterial color="#ffffff" transparent opacity={0.85} />
         </mesh>
       )}
       <group
         ref={rootRef}
         onClick={(e) => {
-          if (!canCheer) return
+          // 무대를 돌리려고 끈 거면 응원으로 치지 않는다
+          if (!canCheer || e.delta > 6) return
           e.stopPropagation()
           onCheer(participant)
         }}
-        onPointerOver={() => setCursor('pointer')}
-        onPointerOut={() => setCursor('')}
+        onPointerOver={(e) => setCursor(e.nativeEvent.target, 'pointer')}
+        onPointerOut={(e) => setCursor(e.nativeEvent.target, '')}
       >
         <mesh ref={bodyRef} geometry={body} position={[0, BODY_R, 0]} castShadow>
           <meshStandardMaterial vertexColors emissive={characterOf(participant.characterId).gradient[1]} emissiveIntensity={0.18} roughness={0.45} transparent={!isExercising && !isSelf} opacity={!isExercising && !isSelf ? 0.85 : 1} />
         </mesh>
-        {[-0.17, 0.17].map((ex) => (
-          <mesh key={ex} position={[ex, BODY_R + 0.1, BODY_R * 0.88]}>
-            <sphereGeometry args={[0.065, 12, 10]} />
+        {[-0.31, 0.31].map((k) => (
+          <mesh key={k} position={[k * BODY_R, BODY_R * 1.18, BODY_R * 0.88]}>
+            <sphereGeometry args={[BODY_R * 0.12, 12, 10]} />
             <meshStandardMaterial color="#3a2a39" roughness={0.3} />
           </mesh>
         ))}
-        {[-0.3, 0.3].map((ex) => (
-          <mesh key={ex} position={[ex, BODY_R - 0.06, BODY_R * 0.8]} scale={[1, 0.6, 0.4]}>
-            <sphereGeometry args={[0.08, 10, 8]} />
+        {[-0.55, 0.55].map((k) => (
+          <mesh key={k} position={[k * BODY_R, BODY_R * 0.9, BODY_R * 0.8]} scale={[1, 0.6, 0.4]}>
+            <sphereGeometry args={[BODY_R * 0.145, 10, 8]} />
             <meshStandardMaterial color="#ff8fb1" transparent opacity={0.7} />
           </mesh>
         ))}
@@ -108,11 +111,12 @@ function Figure({ participant, x, index, isSelf, onCheer }: FigureProps) {
 interface Props {
   participants: Participant[]
   selfId: string
+  rowZ: number
   maxShown?: number
   onCheer?: (p: Participant) => void
 }
 
-export default function Characters3D({ participants, selfId, maxShown = 6, onCheer }: Props) {
+export default function Characters3D({ participants, selfId, rowZ, maxShown = 6, onCheer }: Props) {
   const shown = participants.slice(0, maxShown)
   return (
     <>
@@ -122,6 +126,7 @@ export default function Characters3D({ participants, selfId, maxShown = 6, onChe
           participant={p}
           index={i}
           x={figureX(i, shown.length)}
+          z={rowZ}
           isSelf={p.userId === selfId}
           onCheer={onCheer}
         />

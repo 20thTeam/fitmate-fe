@@ -2,12 +2,15 @@
 import sunsetBg from '../../assets/bg/sunset.jpg'
 import oceanBg from '../../assets/bg/ocean-blur.jpg'
 import type { Theme } from '../Backdrop'
+import type { FoliageColors } from './foliage'
 
 export interface RoomPalette {
   /** 뒤쪽 둥근 벽에 입히는 배경 그림 */
   backdrop: string
   /** 배경 그림 아래쪽(바닥·호수)은 3D 바닥으로 대신해서 잘라낸다 (0~1) */
   backdropCropBottom: number
+  /** 배경 벽 아랫변 높이. 그림 속 산·수평선이 무대 뒤 가장자리 바로 위에 오도록 맞춘다 */
+  backdropBottom: number
   sky: string
   ground: string
   platform: string
@@ -15,7 +18,7 @@ export interface RoomPalette {
   panel: string
   lampPost: string
   lampGlow: string
-  foliage: [string, string]
+  foliage: FoliageColors
   trunk: string
   rock: string
   hemiSky: string
@@ -26,24 +29,26 @@ export interface RoomPalette {
 export const PALETTES: Record<Theme, RoomPalette> = {
   friend: {
     backdrop: sunsetBg,
-    backdropCropBottom: 0.17,
-    sky: '#f2b9cf',
-    ground: '#e9b3c9',
-    platform: '#f7e3ea',
-    frame: '#4e3b4d',
-    panel: '#f8e8f4',
-    lampPost: '#3d2c43',
-    lampGlow: '#fff1d0',
-    foliage: ['#a5c46c', '#c0d98a'],
-    trunk: '#dc8b7b',
-    rock: '#d8c6e6',
-    hemiSky: '#ffe3ee',
-    hemiGround: '#b993b9',
-    sun: '#ffe2c6',
+    backdropCropBottom: 0.25,
+    backdropBottom: -5.5,
+    sky: '#f3b0cb',
+    ground: '#c9b46e',
+    platform: '#fbdcd8',
+    frame: '#6a4865',
+    panel: '#f6cdea',
+    lampPost: '#5b3a56',
+    lampGlow: '#fff4dc',
+    foliage: { shade: '#b08e86', base: '#b5bc63', light: '#e3e596' },
+    trunk: '#e2907e',
+    rock: '#dcbde3',
+    hemiSky: '#ffe6ee',
+    hemiGround: '#d9a3b8',
+    sun: '#ffe6cf',
   },
   public: {
     backdrop: oceanBg,
     backdropCropBottom: 0.42,
+    backdropBottom: -3.4,
     sky: '#cfe6fb',
     ground: '#57a7de',
     platform: '#f1ebf8',
@@ -51,7 +56,7 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     panel: '#f6ecfa',
     lampPost: '#3a3340',
     lampGlow: '#fffbe8',
-    foliage: ['#5aa847', '#7cc65a'],
+    foliage: { shade: '#3f7f45', base: '#5fae4c', light: '#a6dc78' },
     trunk: '#b8875a',
     rock: '#ece6ef',
     hemiSky: '#e4f2ff',
