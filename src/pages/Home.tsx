@@ -1,39 +1,87 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { services } from '../services'
 import { useApp } from '../store/app'
+import type { WorkoutSession } from '../types/domain'
+import { summarize } from '../lib/stats'
+import { durationLabel } from '../lib/format'
+import { getSunsetStatus, sunsetOpenLabel } from '../lib/sunset'
+import { characterOf } from '../config/characters'
+import Backdrop from '../components/Backdrop'
+import { Logo, ProvisionalBadge } from '../components/ui'
+import groupIcon from '../assets/icons/group.png'
+import globeIcon from '../assets/icons/globe.png'
 
-// F-HIPEHA: 운동 유형 선택 홈
+// F-HIPEHA 홈. Figma 시안에 없는 화면이라 같은 디자인 시스템으로 맞췄다.
+// 친구 운동이 메인, 공개 운동방(선셋)은 보조 카드 (F-HIPEHA rules)
 export default function Home() {
   const nav = useNavigate()
   const profile = useApp((s) => s.profile)!
+  const lastRoutineId = useApp((s) => s.lastRoutineId)
+  const [sessions, setSessions] = useState<WorkoutSession[] | null>(null)
+  const [hasError, setHasError] = useState(false)
+  const sunset = getSunsetStatus()
+
+  useEffect(() => {
+    services.record
+      .listSessions(profile.userId)
+      .then(setSessions)
+      .catch(() => setHasError(true))
+  }, [profile.userId])
+
+  const stats = sessions ? summarize(sessions) : null
 
   return (
-    <main className="page">
-      <header className="row" style={{ justifyContent: 'space-between' }}>
-        <strong style={{ fontSize: 24 }}>FITMATE</strong>
-        <div className="row">
-          <span>{profile.nickname}</span>
-          <Link to="/history" className="btn">성장 기록</Link>
-        </div>
-      </header>
+    <Backdrop isDim>
+      <Logo isLight />
+      <div className="backdrop-body is-center" style={{ gap: 28 }}>
+        <header className="col center" style={{ gap: 12 }}>
+          <img src={characterOf(profile.characterId).image} alt="" width={84} height={84} />
+          <h1 className="t-display">안녕하세요, {profile.nickname}님</h1>
+          <p className="t-h3 t-soft" style={{ fontWeight: 600 }}>오늘도 친구들과 함께 운동해볼까요?</p>
+        </header>
 
-      <div className="grid" style={{ gridTemplateColumns: '2fr 1fr', flex: 1 }}>
-        <section className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-          <div>
-            <h2 className="title">친구들과 운동하기</h2>
-            <p className="subtitle">목표에 맞는 루틴으로 친구 2~5명과 같은 공간에서 운동해요</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '560px 380px', gap: 24 }}>
+          <section className="card col" style={{ gap: 16, padding: 32 }}>
+            <span className="panel-pill" style={{ alignSelf: 'flex-start' }}><img src={groupIcon} alt="" width={18} height={18} />친구 운동방</span>
+            <h2 className="t-title">친구들과 운동하기</h2>
+            <p className="t-soft" style={{ lineHeight: 1.6 }}>AI가 추천한 나만의 루틴으로 친구들과 같은 운동방에서 함께 운동해요. 최대 5명까지 들어올 수 있어요.</p>
+            <div className="row" style={{ gap: 12, marginTop: 'auto' }}>
+              <button className="btn btn-primary btn-lg" onClick={() => nav('/goal')}>운동 목표 고르기</button>
+              {lastRoutineId && <button className="btn btn-secondary" onClick={() => nav(`/room/${lastRoutineId}`)}>지난 운동방으로</button>}
+            </div>
+          </section>
+
+          <div className="col" style={{ gap: 24 }}>
+            <section className="card col" style={{ gap: 10 }} data-theme="public">
+              <div className="row between">
+                <span className="panel-pill"><img src={globeIcon} alt="" width={18} height={18} />공개 운동방</span>
+                <span className="chip chip-ghost">{sunset.isOpen ? '오픈 중' : '오픈 전'}</span>
+              </div>
+              <h2 className="t-h2">선셋 에어로빅</h2>
+              <p className="t-small t-soft" style={{ lineHeight: 1.6 }}>{sunsetOpenLabel()}</p>
+              <span style={{ alignSelf: 'flex-start' }}><ProvisionalBadge>운영 시각 임시</ProvisionalBadge></span>
+              <button className="btn btn-primary" onClick={() => nav('/sunset')}>{sunset.isOpen ? '공개 운동방 입장하기' : '운동방 미리보기'}</button>
+            </section>
+
+            {/* 내 성장 기록 요약: 실제 저장된 기록만 */}
+            <section className="card col" style={{ gap: 10 }}>
+              <h2 className="t-h3" style={{ color: 'var(--c-title-soft)' }}>내 성장 기록</h2>
+              {hasError && <p className="t-soft">기록을 불러오지 못했어요.</p>}
+              {!hasError && !stats && <p className="t-soft">불러오는 중…</p>}
+              {stats && stats.count === 0 && <p className="t-soft">아직 운동 기록이 없어요. 첫 운동을 시작해 보세요!</p>}
+              {stats && stats.count > 0 && (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  <div className="col" style={{ gap: 2 }}><span className="t-xs t-soft">이번 주</span><strong className="t-h3">{stats.weekCount}회</strong></div>
+                  <div className="col" style={{ gap: 2 }}><span className="t-xs t-soft">연속</span><strong className="t-h3">{stats.streakDays}일</strong></div>
+                  <div className="col" style={{ gap: 2 }}><span className="t-xs t-soft">누적</span><strong className="t-h3">{durationLabel(stats.totalActiveMs)}</strong></div>
+                </div>
+              )}
+              <button className="btn btn-secondary btn-sm" onClick={() => nav('/history')}>전체 기록 보기</button>
+            </section>
           </div>
-          <button className="btn btn-primary btn-lg" style={{ alignSelf: 'flex-start' }} onClick={() => nav('/goal')}>
-            운동 시작
-          </button>
-        </section>
-
-        <section className="card" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <h3 style={{ margin: 0 }}>선셋 에어로빅</h3>
-          <p className="muted" style={{ margin: 0 }}>밤 10시쯤 열리는 공개 운동장</p>
-          {/* 오픈 시각·운영 방식 미정 → 상태는 Sunset 페이지에서 설정값으로 판단 */}
-          <button className="btn" onClick={() => nav('/sunset')}>둘러보기</button>
-        </section>
+        </div>
       </div>
-    </main>
+    </Backdrop>
   )
 }

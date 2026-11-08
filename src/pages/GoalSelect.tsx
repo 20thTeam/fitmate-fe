@@ -1,60 +1,90 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { services } from '../services'
 import { useApp } from '../store/app'
 import { GOALS, type GoalId } from '../types/domain'
+import Backdrop from '../components/Backdrop'
+import GoalIcon from '../components/GoalIcon'
+import { Logo } from '../components/ui'
 
-// F-FTENXM: 운동 목표 선택 + 루틴 추천 로딩
+// F-FTENXM, F-UZFEMP · Figma '오늘의 어떤 운동을 할까요?'
+// 카드 선택 → '운동 시작하기' → 1회차 루틴 추천 → 친구 운동방 입장 대기
+
+/** 로딩 표시가 깜빡이고 사라지지 않게 최소한으로 보여주는 시간 */
+const MIN_LOADING_MS = 900
+
+/** 시안처럼 설명을 두 줄로 나눈다 (쉼표가 있으면 쉼표 뒤, 없으면 마지막 띄어쓰기) */
+function splitTwoLines(text: string) {
+  const comma = text.indexOf(', ')
+  const at = comma >= 0 ? comma + 1 : text.lastIndexOf(' ')
+  return at > 0 ? [text.slice(0, at), text.slice(at + 1)] : [text]
+}
+
 export default function GoalSelect() {
   const nav = useNavigate()
+  const [params] = useSearchParams()
   const profile = useApp((s) => s.profile)!
   const setGoal = useApp((s) => s.setGoal)
-  const setRoutine = useApp((s) => s.setRoutine)
-  const [goal, pick] = useState<GoalId | null>(null)
+  const preset = GOALS.find((g) => g.id === params.get('pick'))?.id ?? null
+  const [picked, setPicked] = useState<GoalId | null>(preset)
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
 
-  async function recommend() {
-    if (!goal) return
+  const handleStart = async () => {
+    if (!picked) return
     setState('loading')
     try {
-      const r = await services.routine.recommendFirst(profile.userId, goal)
-      setGoal(goal)
-      setRoutine(r.routineId)
-      nav(`/routine/${r.routineId}`)
+      const [r] = await Promise.all([
+        services.routine.recommendFirst(profile.userId, picked),
+        new Promise((res) => setTimeout(res, MIN_LOADING_MS)),
+      ])
+      setGoal(picked)
+      nav(`/room/${r.routineId}`)
     } catch {
       setState('error')
     }
   }
 
-  if (state === 'loading') {
-    return (
-      <main className="page page-center">
-        <h2 className="title">루틴을 준비하고 있어요</h2>
-        <p className="subtitle">선택한 목표에 맞는 운동을 고르는 중…</p>
-      </main>
-    )
-  }
+  const isLoading = state === 'loading'
 
   return (
-    <main className="page page-center">
-      <h1 className="title">오늘의 운동 목표는?</h1>
-      <div className="grid" style={{ gridTemplateColumns: 'repeat(2, 280px)' }}>
-        {GOALS.map((g) => (
-          <button
-            key={g.id}
-            className={`card selectable ${goal === g.id ? 'selected' : ''}`}
-            style={{ height: 140, fontSize: 24, fontWeight: 700 }}
-            onClick={() => pick(g.id)}
-          >
-            {g.label}
-          </button>
-        ))}
+    <Backdrop>
+      <Logo />
+      <div className="backdrop-body is-center" style={{ gap: 0, paddingTop: 120 }}>
+        <div className="col center" style={{ gap: 10 }}>
+          <h1 style={{ fontSize: 46, fontWeight: 700, textShadow: '0 2px 12px rgba(120,60,120,0.25)' }}>오늘의 어떤 운동을 할까요?</h1>
+          <p style={{ fontSize: 22 }}>원하는 운동을 선택하고, 함께 시작해요!</p>
+        </div>
+
+        <div className="row" role="radiogroup" aria-label="운동 목표" style={{ gap: 45, marginTop: 64 }}>
+          {GOALS.map((g) => {
+            const isSelected = picked === g.id
+            return (
+              <button
+                key={g.id}
+                role="radio"
+                aria-checked={isSelected}
+                className={`goal-card ${isSelected ? 'is-selected' : ''}`}
+                disabled={isLoading}
+                onClick={() => setPicked(g.id)}
+              >
+                <div className="col center" style={{ height: 110 }}>
+                  <GoalIcon goal={g.id} />
+                </div>
+                <span className="goal-card-title">{g.label}</span>
+                <span className="goal-card-desc">{splitTwoLines(g.desc).map((line) => <span key={line} style={{ display: 'block' }}>{line}</span>)}</span>
+              </button>
+            )
+          })}
+        </div>
+
+        <button className="btn btn-plum btn-xl" style={{ marginTop: 106 }} disabled={!picked || isLoading} onClick={handleStart}>
+          <span style={{ flex: 1, textAlign: 'center' }}>{isLoading ? '나에게 맞는 루틴을 만드는 중…' : '운동 시작하기'}</span>
+          <span aria-hidden>{isLoading ? '' : '>'}</span>
+        </button>
+        <p role="status" style={{ minHeight: 24, marginTop: 14, fontWeight: 600 }}>
+          {state === 'error' ? '루틴을 추천하지 못했어요. 다시 눌러 주세요.' : !picked ? '운동을 하나 골라 주세요' : ''}
+        </p>
       </div>
-      {state === 'error' && <p style={{ color: 'var(--c-danger)' }}>추천을 만들지 못했어요. 다시 시도해 주세요.</p>}
-      {/* 목표 미선택 시 버튼 비활성 (F-FTENXM 권장안) */}
-      <button className="btn btn-primary btn-lg" disabled={!goal} onClick={recommend}>
-        루틴 추천받기
-      </button>
-    </main>
+    </Backdrop>
   )
 }

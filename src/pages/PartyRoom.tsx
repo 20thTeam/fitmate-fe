@@ -1,285 +1,361 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { services, type RoomConnection } from '../services'
-import { isStale } from '../services/local/realtime'
+import { useEffect, useState } from 'react'
+import { useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { services } from '../services'
 import { DEMO_ROOM_ID, useApp } from '../store/app'
-import type { ExerciseRecord, Participant, Routine } from '../types/domain'
-import { amountLabel } from '../lib/format'
-import { characterColor } from '../config/characters'
-import { useCamera } from '../hooks/useCamera'
+import { goalLabel, type Participant, type Profile, type Routine, type WorkoutSession } from '../types/domain'
+import { PARTY_MAX, PROVISIONAL_REST_SECONDS, provisionalDifficulty } from '../config/provisional'
+import { guideOf, ROUTINE_THUMB } from '../config/exercises'
+import { amountLabel, shortAmountLabel } from '../lib/format'
+import { estimateKcal, estimateMinutes } from '../lib/estimate'
+import { useRoom } from '../hooks/useRoom'
+import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
+import { useWorkout } from '../hooks/useWorkout'
+import { useNow } from '../hooks/useNow'
+import { useToast } from '../hooks/useToast'
+import Scene from '../components/room/Scene'
+import ModeTabs from '../components/room/ModeTabs'
+import ParticipantPanel, { OnlineCount } from '../components/room/ParticipantPanel'
+import { RoutineOrderPanel, RoutineProgressPanel } from '../components/room/RoutinePanels'
+import SummaryBar from '../components/room/SummaryBar'
+import GuideScreen from '../components/room/GuideScreen'
+import CharacterFloor from '../components/room/CharacterFloor'
+import WorkoutHud from '../components/room/WorkoutHud'
+import InviteModal from '../components/room/InviteModal'
+import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
+import CameraCheck from '../components/CameraCheck'
+import EnterLoading from '../components/EnterLoading'
+import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
+import groupIcon from '../assets/icons/group.png'
+import userAddIcon from '../assets/icons/user-add.png'
+import checkIcon from '../assets/icons/check.png'
 
-// 파티 운동방: F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ,
-// F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV
-//
-// 다음 운동 전환은 '직접 조작' (F-SZCKIV 권장안), 휴식 시간은 미정이라 타이머 없음.
+// 친구 운동방 · Figma '친구 운동방' → '카메라 확인' → '운동방에 입장하는 중' → '운동 진행'
+// F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ, F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV
+// 다음 운동 전환은 사용자가 직접 누른다 (F-SZCKIV 권장안). 참가자마다 시작·종료가 독립이다 (F-WGMOYG).
 
-type Phase = 'joining' | 'full' | 'network' | 'ready' | 'exercising' | 'rest'
+type Phase = 'lobby' | 'camera' | 'entering' | 'play' | 'rest'
 
-const STATUS_LABEL: Record<Participant['status'], string> = {
-  waiting: '대기 중',
-  exercising: '운동 중',
-  resting: '휴식 중',
-  done: '완료',
-}
-
-const emptyRecord = (exerciseId: string): ExerciseRecord => ({
-  exerciseId,
-  validReps: 0,
-  validSeconds: 0,
-  durationMs: 0,
-  completed: false,
-  postureNotes: [],
-})
+/** 입장 로딩 단계를 하나씩 체크해 보여주는 간격 */
+const ENTER_STEP_MS = 400
 
 export default function PartyRoom() {
   const { routineId = '' } = useParams()
   const nav = useNavigate()
   const profile = useApp((s) => s.profile)!
+  const setLastRoutineId = useApp((s) => s.setLastRoutineId)
+  const [routine, setRoutine] = useState<Routine | null | undefined>(undefined)
+  const [retryKey, setRetryKey] = useState(0)
 
-  const [routine, setRoutine] = useState<Routine | null>(null)
-  const [phase, setPhase] = useState<Phase>('joining')
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [cheerToast, setCheerToast] = useState<string | null>(null)
-  const connRef = useRef<RoomConnection | null>(null)
-  const participantsRef = useRef<Participant[]>([])
-  participantsRef.current = participants
-
-  // 진행 상태
-  const [idx, setIdx] = useState(0)
-  const [setNo, setSetNo] = useState(1)
-  const [records, setRecords] = useState<ExerciseRecord[]>([])
-  const startedAt = useRef(0)
-  const exerciseStart = useRef(0)
-
-  const camera = useCamera()
-
-  // 루틴 로드 + 방 입장
   useEffect(() => {
-    let conn: RoomConnection | null = null
-    let alive = true
-    ;(async () => {
-      const r = await services.routine.get(routineId)
-      if (!alive) return
-      if (!r) return nav('/goal', { replace: true })
-      setRoutine(r)
-      setRecords(r.items.map((it) => emptyRecord(it.exerciseId)))
-
-      const res = await services.realtime.join(DEMO_ROOM_ID, profile)
-      if (!alive) return res.ok && res.conn.leave()
-      if (!res.ok) return setPhase(res.reason)
-      conn = res.conn
-      connRef.current = conn
-      conn.onParticipants(setParticipants)
-      conn.onCheer((e) => {
-        const from = participantsRef.current.find((p) => p.userId === e.fromUserId)
-        setCheerToast(`${from?.nickname ?? '친구'}님이 응원을 보냈어요 ${e.reaction}`)
-        setTimeout(() => setCheerToast(null), 2500)
+    services.routine
+      .get(routineId)
+      .then((r) => {
+        setRoutine(r)
+        if (r) setLastRoutineId(r.routineId)
       })
-      setPhase('ready')
-    })()
-    return () => {
-      alive = false
-      conn?.leave()
-    }
-  }, [routineId, profile, nav])
+      .catch(() => setRoutine(null))
+  }, [routineId, retryKey, setLastRoutineId])
 
-  const item = routine?.items[idx]
-  const rec = records[idx]
-
-  const addValidRep = useCallback(() => {
-    // 카메라 오류 중에는 카운트하지 않는다 (F-SZCKIV)
-    if (camera.state !== 'on') return
-    setRecords((rs) => rs.map((r, i) => (i === idx ? { ...r, validReps: r.validReps + 1 } : r)))
-  }, [camera.state, idx])
-
-  function start() {
-    if (!item) return
-    startedAt.current ||= Date.now()
-    exerciseStart.current = Date.now()
-    setPhase('exercising')
-    connRef.current?.updateSelf({ status: 'exercising', currentExercise: item.name })
-  }
-
-  function closeExercise(): ExerciseRecord[] {
-    const it = routine!.items[idx]
-    const updated = records.map((r, i) => {
-      if (i !== idx) return r
-      const dur = r.durationMs + (Date.now() - exerciseStart.current)
-      const done = it.targetReps
-        ? r.validReps >= it.targetReps * it.sets
-        : r.validSeconds >= (it.targetSeconds ?? 0) * it.sets
-      return { ...r, durationMs: dur, completed: done }
-    })
-    setRecords(updated)
-    return updated
-  }
-
-  function next() {
-    if (!routine || !item) return
-    if (setNo < item.sets) {
-      setSetNo((n) => n + 1)
-      return
-    }
-    closeExercise()
-    if (idx + 1 < routine.items.length) {
-      setPhase('rest')
-      connRef.current?.updateSelf({ status: 'resting' })
-    } else {
-      finish()
-    }
-  }
-
-  function goNextExercise() {
-    setIdx((i) => i + 1)
-    setSetNo(1)
-    setPhase('ready')
-    connRef.current?.updateSelf({ status: 'waiting', currentExercise: routine!.items[idx + 1].name })
-  }
-
-  async function finish() {
-    const finalRecords = phase === 'exercising' ? closeExercise() : records
-    const session = {
-      sessionId: crypto.randomUUID(),
-      userId: profile.userId,
-      roomId: DEMO_ROOM_ID,
-      routineId: routine!.routineId,
-      round: routine!.round,
-      goal: routine!.goal,
-      startedAt: startedAt.current || Date.now(),
-      endedAt: Date.now(),
-      records: finalRecords,
-    }
-    await services.record.saveSession(session)
-    connRef.current?.updateSelf({ status: 'done' })
-    camera.stop()
-    nav(`/result/${session.sessionId}`)
-  }
-
-  function cheer(p: Participant) {
-    connRef.current?.sendCheer(p.userId, '🔥')
-  }
-
-  // ───── 화면 ─────
-  if (phase === 'joining') return <main className="page page-center">운동방에 연결하는 중…</main>
-  if (phase === 'full' || phase === 'network') {
+  if (routine === undefined) return <EnterLoading theme="friend" steps={[{ label: '오늘의 루틴 불러오는 중', isDone: false }, { label: '친구 운동방 연결 확인', isDone: false }]} />
+  if (routine === null) {
     return (
-      <main className="page page-center">
-        <h2 className="title">{phase === 'full' ? '운동방이 가득 찼어요 (최대 5명)' : '운동방에 연결할 수 없어요'}</h2>
-        <button className="btn btn-primary" onClick={() => location.reload()}>다시 시도</button>
-      </main>
+      <CenterMessage
+        title="루틴을 찾을 수 없어요"
+        desc="목표를 다시 선택해 추천을 받아 주세요."
+        action={<>
+          <button className="btn btn-secondary" onClick={() => setRetryKey((k) => k + 1)}>다시 시도</button>
+          <button className="btn btn-primary" onClick={() => nav('/goal')}>목표 선택으로</button>
+        </>}
+      />
     )
   }
-  if (!routine || !item || !rec) return null
+  return <Room key={routine.routineId} routine={routine} profile={profile} />
+}
 
-  const target = item.targetReps ? `${item.targetReps}회` : `${item.targetSeconds}초`
-  const progress = item.targetReps ? `${rec.validReps}회` : `${rec.validSeconds}초`
+function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
+  const nav = useNavigate()
+  const summary = routine.items.map((i) => i.name).join(' · ')
+  const room = useRoom(DEMO_ROOM_ID, profile, {
+    maxParticipants: PARTY_MAX,
+    initial: { goal: routine.goal, routineSummary: summary, status: 'waiting' },
+  })
+  const camera = useCamera()
+  const workout = useWorkout(routine.items)
+  const toast = useToast()
+
+  const [phase, setPhase] = useState<Phase>('lobby')
+  const [enterStartedAt, setEnterStartedAt] = useState(0)
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
+  const [isGuideOpen, setIsGuideOpen] = useState(false)
+  const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false)
+  const [restStartedAt, setRestStartedAt] = useState(0)
+  const [isSaving, setIsSaving] = useState(false)
+  const [hasSaveError, setHasSaveError] = useState(false)
+  const now = useNow(phase === 'rest' || phase === 'entering', phase === 'entering' ? 100 : 1000)
+
+  const { item, record } = workout
+  const isLast = workout.index + 1 >= routine.items.length
+  const isLastSet = item ? workout.setNo >= item.sets : true
+  const isWorkingOut = phase === 'play' || phase === 'rest'
+
+  // 운동 중 이탈 확인 (F-SZCKIV)
+  const blocker = useBlocker(({ nextLocation }) => isWorkingOut && !isSaving && !nextLocation.pathname.startsWith('/result'))
+
+  // 내 진행 상황을 친구에게 알린다
+  useEffect(() => {
+    if (phase !== 'play' || !item) return
+    room.updateSelf({ status: workout.isRunning ? 'exercising' : 'paused', currentExercise: item.name, validReps: workout.setProgress })
+  }, [phase, item, workout.isRunning, workout.setProgress]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 카메라가 끊기면 카운트를 멈춘다 (F-SZCKIV exceptions)
+  const isCameraBroken = isWorkingOut && camera.state !== 'on'
+  useEffect(() => {
+    if (isCameraBroken && workout.isRunning) workout.pause()
+  }, [isCameraBroken]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 입장 로딩: 실제 상태가 준비되면 단계별로 체크한 뒤 운동을 시작한다
+  const enterElapsed = now - enterStartedAt
+  const enterSteps = [
+    { label: '친구 운동방 연결 확인', isDone: room.state === 'joined' && enterElapsed > ENTER_STEP_MS },
+    { label: '운동장 불러오는 중', isDone: enterElapsed > ENTER_STEP_MS * 2 },
+    { label: '카메라 불러오는 중', isDone: camera.isOn && enterElapsed > ENTER_STEP_MS * 3 },
+  ]
+  const isEnterReady = enterSteps.every((s) => s.isDone)
+  useEffect(() => {
+    if (phase !== 'entering' || !isEnterReady) return
+    const t = setTimeout(() => {
+      setPhase('play')
+      workout.start()
+    }, ENTER_STEP_MS)
+    return () => clearTimeout(t)
+  }, [phase, isEnterReady]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleCameraConfirmed = () => {
+    room.updateSelf({ status: 'ready' })
+    setEnterStartedAt(Date.now())
+    setPhase('entering')
+  }
+
+  const handleNext = () => {
+    if (!item) return
+    if (!isLastSet) return workout.nextSet()
+    workout.endExercise()
+    if (isLast) return finish()
+    setRestStartedAt(() => Date.now())
+    setPhase('rest')
+    room.updateSelf({ status: 'resting', validReps: undefined })
+  }
+
+  const handleStartNextExercise = () => {
+    const nextIndex = workout.index + 1
+    workout.goToExercise(nextIndex)
+    room.updateSelf({ currentExercise: routine.items[nextIndex].name })
+    setPhase('play')
+    workout.start()
+  }
+
+  const finish = async () => {
+    setIsSaving(true)
+    const result = workout.finalize()
+    const session: WorkoutSession = {
+      sessionId: crypto.randomUUID(),
+      kind: 'party',
+      userId: profile.userId,
+      roomId: DEMO_ROOM_ID,
+      routineId: routine.routineId,
+      round: routine.round,
+      goal: routine.goal,
+      startedAt: result.startedAt,
+      endedAt: Date.now(),
+      activeMs: result.activeMs,
+      records: result.records,
+    }
+    try {
+      await services.record.saveSession(session)
+      room.updateSelf({ status: 'done', validReps: undefined })
+      camera.stop()
+      nav(`/result/${session.sessionId}`)
+    } catch {
+      setIsSaving(false)
+      setHasSaveError(true)
+      setIsEndConfirmOpen(true) // 오류 문구와 재시도 버튼이 이 창에 있다
+    }
+  }
+
+  const handleCheer = (p: Participant) => {
+    if (room.sendCheer(p.userId)) toast.show(`${p.nickname}님에게 응원을 보냈어요 🔥`)
+  }
+
+  // ───── 입장 상태 ─────
+  if (room.state === 'joining') return <EnterLoading theme="friend" steps={[{ label: '오늘의 루틴 불러오기', isDone: true }, { label: '친구 운동방 연결 확인', isDone: false }]} />
+  if (room.state === 'full') {
+    return (
+      <CenterMessage
+        title={`운동방이 가득 찼어요 (최대 ${PARTY_MAX}명)`}
+        desc="친구가 나간 뒤 다시 시도해 주세요."
+        action={<>
+          <button className="btn btn-secondary" onClick={() => nav('/home')}>홈으로</button>
+          <button className="btn btn-primary" onClick={room.retry}>다시 시도</button>
+        </>}
+      />
+    )
+  }
+  if (room.state === 'network') {
+    return <CenterMessage title="운동방에 연결할 수 없어요" desc="네트워크를 확인한 뒤 다시 시도해 주세요." action={<button className="btn btn-primary" onClick={room.retry}>다시 시도</button>} />
+  }
+  if (!item || !record) return null
+
+  if (phase === 'camera') return <CameraCheck camera={camera} theme="friend" onBack={() => setPhase('lobby')} onConfirm={handleCameraConfirmed} />
+  if (phase === 'entering') return <EnterLoading theme="friend" steps={enterSteps} />
+
+  const others = room.participants.filter((p) => p.userId !== profile.userId)
+  const friendTitle = (
+    <span className="panel-pill"><img src={groupIcon} alt="" width={18} height={18} />친구</span>
+  )
+  const friendPanel = (
+    <ParticipantPanel
+      title={friendTitle}
+      headerRight={<OnlineCount participants={room.participants} selfId={profile.userId} />}
+      participants={room.participants}
+      selfId={profile.userId}
+      maxShown={PARTY_MAX}
+      onCheer={handleCheer}
+      emptyText="아직 친구가 없어요. 혼자 시작해도 되고, 친구가 들어오면 바로 보여요."
+      footer={phase === 'lobby' && (
+        <button className="btn btn-dark btn-sm btn-block" style={{ justifyContent: 'space-between', marginTop: 4 }} onClick={() => setIsInviteOpen(true)}>
+          <span className="row" style={{ gap: 8 }}><img src={userAddIcon} alt="" width={16} height={16} />친구 초대하기</span>
+          <span aria-hidden>&gt;</span>
+        </button>
+      )}
+    />
+  )
+
+  // 운동 중에는 바로 다음 운동, 휴식 중에는 곧 시작할 운동
+  const next = routine.items[workout.index + 1]
+  // 휴식 직후 첫 1초는 시계가 이전 값이라 상한을 둔다
+  const restLeftSec = Math.min(PROVISIONAL_REST_SECONDS, Math.max(0, Math.ceil((PROVISIONAL_REST_SECONDS * 1000 - (now - restStartedAt)) / 1000)))
+  const upcoming = phase === 'rest' ? routine.items[workout.index + 2] : next
 
   return (
-    <main className="page" style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
-      {/* 왼쪽: 3D 공간 + 참가자 */}
-      <section style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div className="card" style={{ flex: 1, minHeight: 480, display: 'grid', placeItems: 'center', position: 'relative' }}>
-          {/* TODO: <Stage3D /> — 본인·친구 캐릭터 + AI 가이드 */}
-          <span className="muted">3D 운동 공간 (구현 예정)</span>
-          <video
-            ref={camera.videoRef}
-            muted
-            playsInline
-            style={{ position: 'absolute', right: 16, bottom: 16, width: 200, borderRadius: 12, transform: 'scaleX(-1)', display: camera.state === 'on' ? 'block' : 'none' }}
-          />
-        </div>
+    <Scene
+      theme="friend"
+      screen={phase === 'lobby'
+        ? <GuideScreen idleTitle="친구들이 모이면 함께 시작해요" idleDesc={`지금 ${room.participants.length}명 접속 중 · 준비되면 '시작하기'를 눌러 주세요`} />
+        : <GuideScreen exerciseId={phase === 'rest' ? next?.exerciseId : item.exerciseId} name={phase === 'rest' ? next?.name : item.name} />}
+      floor={<CharacterFloor theme="friend" participants={room.participants} selfId={profile.userId} onCheer={handleCheer} />}
+    >
+      <Logo />
 
-        <div className="row" style={{ flexWrap: 'wrap' }}>
-          {participants.map((p) => {
-            const me = p.userId === profile.userId
-            const stale = !me && isStale(p)
-            return (
-              <button
-                key={p.userId}
-                className="card row"
-                style={{ padding: 12, gap: 12, cursor: me ? 'default' : 'pointer' }}
-                onClick={() => !me && cheer(p)}
-                title={me ? '나' : '클릭해서 응원 보내기'}
-                disabled={stale}
-              >
-                <span style={{ width: 36, height: 36, borderRadius: '50%', background: characterColor(p.characterId) }} />
-                <span style={{ textAlign: 'left' }}>
-                  <strong>{p.nickname}{me && ' (나)'}</strong>
-                  <br />
-                  <small className="muted">
-                    {p.currentExercise ?? '-'} · {stale ? '연결 불안정' : STATUS_LABEL[p.status]}
-                  </small>
-                </span>
-              </button>
-            )
-          })}
-        </div>
-      </section>
-
-      {/* 오른쪽: 내 운동 패널 */}
-      <aside style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <div className="card">
-          <small className="muted">현재 운동 {idx + 1}/{routine.items.length}</small>
-          <h2 style={{ margin: '4px 0 12px', fontSize: 32 }}>{item.name}</h2>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <div><small className="muted">세트</small><div style={{ fontSize: 24 }}>{setNo} / {item.sets}</div></div>
-            <div><small className="muted">유효 횟수</small><div style={{ fontSize: 24 }}>{progress}</div></div>
-            <div><small className="muted">목표</small><div style={{ fontSize: 24 }}>{amountLabel(item)}</div></div>
+      {phase === 'lobby' && (
+        <>
+          <ModeTabs active="friend" />
+          <div style={{ position: 'absolute', right: 34, top: 150, width: 243 }}>{friendPanel}</div>
+          <div style={{ position: 'absolute', left: 44, bottom: 48, width: 243 }}>
+            <RoutineOrderPanel items={routine.items} sub={`${routine.round}회차 맞춤 루틴`} />
           </div>
-        </div>
-
-        <div className="card">
-          <strong>자세 피드백</strong>
-          {/* 측정된 피드백만 표시 (F-WLBEFJ) */}
-          <p className="muted">{rec.postureNotes.at(-1) ?? '동작을 인식하면 여기에 안내가 표시돼요.'}</p>
-        </div>
-
-        <div className="card">
-          <strong>카메라</strong>
-          <p className="muted" style={{ margin: '8px 0' }}>
-            {camera.state === 'on' && '🎥 정상'}
-            {camera.state === 'off' && '꺼져 있어요'}
-            {camera.state === 'requesting' && '권한 요청 중…'}
-            {camera.state === 'denied' && '권한이 거부됐어요. 주소창 왼쪽 자물쇠에서 카메라를 허용해 주세요.'}
-            {camera.state === 'unavailable' && '사용 가능한 카메라가 없어요.'}
-          </p>
-          {camera.state !== 'on' && (
-            <button className="btn" onClick={camera.start}>카메라 {camera.state === 'off' ? '켜기' : '다시 시도'}</button>
+          <div style={{ position: 'absolute', left: 316, right: 240, bottom: 48, display: 'flex', justifyContent: 'center' }}>
+            <SummaryBar
+              thumb={ROUTINE_THUMB}
+              caption={`오늘의 운동 · ${routine.round}회차`}
+              title={goalLabel(routine.goal)}
+              chip={<span className="chip chip-easy">{provisionalDifficulty(routine.round)}</span>}
+              stats={[
+                { label: '예상 시간', value: `${estimateMinutes(routine.items)}분` },
+                { label: '예상 칼로리', value: `${estimateKcal(routine.items)}kcal` },
+              ]}
+              note={<ProvisionalBadge />}
+              action={
+                <button className="btn btn-brown" style={{ minWidth: 168, height: 56, fontSize: 20, justifyContent: 'space-between' }} onClick={() => setPhase('camera')}>
+                  시작하기<span aria-hidden>&gt;</span>
+                </button>
+              }
+            />
+          </div>
+          {others.length === 0 && import.meta.env.DEV && (
+            <p className="t-xs" style={{ position: 'absolute', right: 34, top: 120, color: '#5b4a5a' }}>[개발용] 다른 탭에서 같은 흐름으로 들어오면 친구로 보여요</p>
           )}
-        </div>
-
-        {phase === 'ready' && (
-          <button className="btn btn-primary btn-lg" disabled={camera.state !== 'on'} onClick={start}>
-            {item.name} 시작
-          </button>
-        )}
-        {phase === 'exercising' && (
-          <>
-            <button className="btn btn-primary btn-lg" onClick={next}>
-              {setNo < item.sets ? '다음 세트' : idx + 1 < routine.items.length ? '다음 운동으로' : '운동 마치기'}
-            </button>
-            {import.meta.env.DEV && (
-              <button className="btn" onClick={addValidRep}>[개발용] 유효 +1 (목표 {target})</button>
-            )}
-          </>
-        )}
-        {phase === 'rest' && (
-          <div className="card">
-            <strong>잘했어요! 잠깐 숨 고르기</strong>
-            <p className="muted">다음 운동: {routine.items[idx + 1].name} · {amountLabel(routine.items[idx + 1])}</p>
-            <button className="btn btn-primary" onClick={goNextExercise}>다음 운동 준비</button>
-          </div>
-        )}
-        <button className="btn" onClick={() => confirm('운동을 끝내고 결과를 볼까요?') && finish()}>
-          운동 종료
-        </button>
-      </aside>
-
-      {cheerToast && (
-        <div className="card" style={{ position: 'fixed', top: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--c-pink)', color: '#fff' }}>
-          {cheerToast}
-        </div>
+        </>
       )}
-    </main>
+
+      {isWorkingOut && (
+        <>
+          <div className="col" style={{ position: 'absolute', right: 20, top: 110, bottom: 220, width: 242, gap: 14 }}>
+            {friendPanel}
+            <RoutineProgressPanel
+              heading={goalLabel(routine.goal)}
+              items={routine.items}
+              activeIndex={phase === 'rest' ? workout.index + 1 : workout.index}
+              guide={guideOf(phase === 'rest' && next ? next.exerciseId : item.exerciseId)}
+            />
+          </div>
+
+          {phase === 'play' ? (
+            <WorkoutHud
+              exerciseId={item.exerciseId}
+              name={item.name}
+              desc={guideOf(item.exerciseId)}
+              meta={`세트 ${workout.setNo} / ${item.sets} · 목표 ${amountLabel(item)}`}
+              ring={{ value: workout.setProgress, max: item.targetReps ?? item.targetSeconds, unit: item.targetReps ? '회' : '초' }}
+              stream={camera.stream}
+              isCameraOn={camera.isOn}
+              notes={record.postureNotes}
+              next={next ? { exerciseId: next.exerciseId, name: next.name, amount: shortAmountLabel(next) } : null}
+              controls={<>
+                <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={16} height={16} />자세 가이드 보기</button>
+                {workout.isRunning
+                  ? <button className="btn btn-dark btn-sm" onClick={workout.pause}>일시정지</button>
+                  : <button className="btn btn-dark btn-sm" disabled={!camera.isOn} onClick={workout.start}>다시 시작</button>}
+              </>}
+              devTools={import.meta.env.DEV && (item.targetReps
+                ? <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidRep()}>[개발용] 유효 +1회</button>
+                : <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidSeconds(5)}>[개발용] 유효 +5초</button>)}
+              nextAction={<>
+                <button className="btn btn-brown btn-sm grow" style={{ padding: 0 }} disabled={isSaving} onClick={handleNext}>
+                  {!isLastSet ? '다음 세트' : isLast ? '운동 마치기' : '다음 운동'} &gt;
+                </button>
+                <button className="btn btn-rose btn-sm grow" style={{ padding: 0 }} onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>
+              </>}
+            />
+          ) : next && (
+            <WorkoutHud
+              exerciseId={next.exerciseId}
+              name="잠깐 쉬어요"
+              desc={`다음 운동은 ${next.name}(${amountLabel(next)})이에요. 준비되면 시작해요. 시간이 지나도 자동으로 넘어가지 않아요.`}
+              meta={<span className="row" style={{ gap: 6 }}>휴식 시간 <ProvisionalBadge /></span>}
+              ring={{ value: restLeftSec, max: PROVISIONAL_REST_SECONDS, unit: '초' }}
+              stream={camera.stream}
+              isCameraOn={camera.isOn}
+              notes={record.postureNotes}
+              next={upcoming ? { exerciseId: upcoming.exerciseId, name: upcoming.name, amount: shortAmountLabel(upcoming) } : null}
+              controls={
+                <button className="btn btn-brown btn-sm" disabled={!camera.isOn} onClick={handleStartNextExercise}>{next.name} 시작 &gt;</button>
+              }
+              nextAction={<button className="btn btn-rose btn-sm btn-block" onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>}
+            />
+          )}
+        </>
+      )}
+
+      {isInviteOpen && <InviteModal onClose={() => setIsInviteOpen(false)} />}
+      {isGuideOpen && <GuideDialog name={item.name} guide={guideOf(item.exerciseId)} onClose={() => setIsGuideOpen(false)} />}
+
+      {isCameraBroken && !isEndConfirmOpen && (
+        <CameraLostDialog message={CAMERA_MESSAGE[camera.state]} onEnd={() => setIsEndConfirmOpen(true)} onRetry={() => camera.start(camera.deviceId || undefined)} />
+      )}
+
+      {isEndConfirmOpen && (
+        <EndConfirmDialog
+          desc="지금까지 측정된 결과가 저장되고, 결과 화면으로 이동해요."
+          hasSaveError={hasSaveError}
+          isSaving={isSaving}
+          onCancel={() => setIsEndConfirmOpen(false)}
+          onConfirm={finish}
+        />
+      )}
+
+      {blocker.state === 'blocked' && <LeaveDialog onStay={() => blocker.reset()} onLeave={() => blocker.proceed()} />}
+
+      {(room.cheerToast || toast.message) && <div className="toast" role="status">{room.cheerToast ?? toast.message}</div>}
+    </Scene>
   )
 }

@@ -23,12 +23,13 @@ export interface ProfileService {
 export interface RoutineService {
   /** 1회차 추천 (F-UZFEMP) */
   recommendFirst(userId: string, goal: GoalId): Promise<Routine>
-  /** 직전 세션 기반 다음 회차 추천 (F-SYGFQC) */
+  /** 직전 파티 세션 기반 다음 회차 추천 (F-SYGFQC). 같은 세션이면 같은 결과를 돌려준다. */
   recommendNext(session: WorkoutSession): Promise<Routine>
   get(routineId: string): Promise<Routine | null>
 }
 
 export interface RecordService {
+  /** sessionId 기준으로 중복 저장하지 않는다 */
   saveSession(session: WorkoutSession): Promise<void>
   getSession(sessionId: string): Promise<WorkoutSession | null>
   /** 본인 기록만 반환 (F-YBENHN) */
@@ -41,7 +42,7 @@ export interface TeamService {
   get(roomId: string): Promise<TeamProgress>
 }
 
-/** 실시간 운동방 연결 (F-STRTHT, F-ERSUOK, F-JENTLD, F-HEIEZC) */
+/** 실시간 운동방 연결 (F-STRTHT, F-ERSUOK, F-JENTLD, F-HEIEZC, F-DXORMB) */
 export interface RoomConnection {
   readonly roomId: string
   readonly selfId: string
@@ -58,8 +59,15 @@ export type JoinResult =
   | { ok: true; conn: RoomConnection }
   | { ok: false; reason: 'full' | 'network' }
 
+export interface JoinOptions {
+  /** 친구 파티는 5명, 선셋 공개 파티는 제한 없음(null) */
+  maxParticipants: number | null
+  /** 입장 시 바로 알릴 내 상태 */
+  initial?: Partial<Omit<Participant, 'userId' | 'lastSeenAt'>>
+}
+
 export interface RealtimeService {
-  join(roomId: string, me: Profile): Promise<JoinResult>
+  join(roomId: string, me: Profile, options: JoinOptions): Promise<JoinResult>
 }
 
 export interface Services {
