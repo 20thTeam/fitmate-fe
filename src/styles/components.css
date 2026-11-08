@@ -1,0 +1,483 @@
+/* 공통 컴포넌트 스타일. 클래스 이름은 components/ 의 React 컴포넌트와 1:1로 맞춘다. */
+
+/* ───────── 배경 ───────── */
+
+/* 일반 화면 배경 (프로필·목표·결과·기록). 내용이 길면 스크롤된다. */
+.backdrop {
+  position: relative;
+  min-height: 100vh;
+  background-image: var(--bg-image);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+.backdrop.is-dim::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: var(--c-dim);
+  pointer-events: none;
+}
+.backdrop > * { position: relative; }
+.backdrop-body {
+  min-height: 100vh;
+  padding: 40px 44px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.backdrop-body.is-center { align-items: center; justify-content: center; }
+.backdrop-body.is-narrow { max-width: 1440px; margin: 0 auto; }
+
+/* 운동방 장면. 화면 전체를 채우고 패널은 가장자리에 띄운다. */
+.scene {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  min-height: 760px;
+  /* hidden은 포커스 이동 때 안쪽이 옆으로 스크롤될 수 있어서 clip을 쓴다 */
+  overflow: clip;
+  container-type: size;
+  background: #2b2735;
+}
+/* 배경 그림을 cover로 깔면서 그림 속 스크린 위치를 비율로 잡기 위한 상자 */
+.scene-art {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100cqw, calc(100cqh * 1672 / 941));
+  aspect-ratio: 1672 / 941;
+  transform: translate(-50%, -50%);
+  background-image: var(--bg-image);
+  background-size: 100% 100%;
+}
+.scene-screen {
+  position: absolute;
+  overflow: hidden;
+  border-radius: 1.2%;
+  display: grid;
+  place-items: center;
+}
+.scene-screen[data-variant='friend'] { left: 28.9%; top: 30%; width: 42.2%; height: 35%; }
+.scene-screen[data-variant='public'] { left: 29.9%; top: 23.2%; width: 40.3%; height: 31.6%; }
+/* 3D 캔버스·2D 그림이 들어가는 층. 스크린 DOM(drei Html)이 패널 위로 올라오지 않게 층을 따로 만든다 */
+.scene-stage { position: absolute; inset: 0; z-index: 0; }
+.scene-canvas { position: absolute !important; inset: 0; }
+/* 대기 화면에서 무대를 잡고 돌릴 수 있다는 표시 */
+.scene-canvas canvas.is-draggable { cursor: grab; touch-action: none; }
+.scene-canvas canvas.is-dragging { cursor: grabbing; }
+/* 3D 스크린 위에 겹치는 DOM. 위치·모양은 Room3D가 매 프레임 matrix3d로 정한다 */
+.screen-3d {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  visibility: hidden;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 10px;
+}
+.scene-tags { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.scene-tags .figure-tag { position: absolute; left: 0; top: 0; visibility: hidden; }
+.figure-tag {
+  display: block;
+  padding: 2px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(46, 49, 62, 0.6);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  user-select: none;
+}
+.scene-hud { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.scene-hud > * { pointer-events: auto; }
+
+/* ───────── 로고 ───────── */
+.logo {
+  position: absolute;
+  left: 44px;
+  top: 32px;
+  z-index: 5;
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--c-ink);
+  text-decoration: none;
+  letter-spacing: -0.01em;
+}
+.logo.is-light { color: #fff; }
+.logo-inline { position: static; }
+
+/* ───────── 패널 ───────── */
+.glass {
+  background: var(--c-glass);
+  border-radius: var(--radius);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  padding: 16px;
+  color: #fff;
+}
+.glass.is-lined { border: 1px solid var(--c-glass-line); }
+.glass-sm {
+  background: var(--c-glass-sm);
+  border: 1px solid var(--c-glass-sm-line);
+  border-radius: var(--radius);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.panel-title { font-size: 13px; font-weight: 700; color: #fff; }
+.panel-sub { font-size: 8px; color: var(--c-text-dim); }
+
+/* 결과·기록 카드 */
+.card {
+  background: var(--c-card);
+  border-radius: var(--radius);
+  padding: 24px 28px;
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.card-title { font-size: 24px; font-weight: 700; color: var(--c-title-soft); }
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 150px;
+  text-align: center;
+}
+.stat-card-label { font-size: 22px; color: var(--c-text-soft); font-weight: 600; }
+.stat-card-value { font-size: 42px; font-weight: 700; }
+.stat-card-sub { font-size: 13px; color: var(--c-text-soft); }
+
+/* ───────── 버튼 ───────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 28px;
+  border-radius: var(--radius-pill);
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  text-decoration: none;
+  transition: filter 0.12s, transform 0.08s;
+}
+.btn:hover:not(:disabled) { filter: brightness(1.08); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { background: var(--grad-disabled); color: #fff; opacity: 0.85; }
+.btn-primary { background: var(--grad-primary); }
+.btn-secondary { background: var(--c-pill-secondary); color: rgba(255, 255, 255, 0.75); }
+.btn-plum { background: var(--grad-plum); }
+.btn-brown { background: var(--grad-brown); border-radius: var(--radius); }
+.btn-rose { background: var(--c-rose); border-radius: var(--radius); }
+.btn-sheet { background: var(--c-search); color: var(--c-sheet-label); }
+.btn-sheet-primary { background: var(--grad-plum); }
+.btn-dark { background: rgba(41, 43, 56, 0.6); border: 1px solid var(--c-glass-sm-line); }
+.btn-sm { min-height: 34px; padding: 0 16px; font-size: 13px; }
+.btn-lg { min-height: 64px; padding: 0 44px; font-size: 26px; }
+.btn-xl { min-height: 98px; padding: 0 56px; font-size: 26px; min-width: 498px; justify-content: space-between; }
+.btn-block { width: 100%; }
+.btn-square { border-radius: var(--radius-sm); }
+
+/* ───────── 칩 ───────── */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.chip-easy { background: var(--c-easy-bg); color: var(--c-easy-text); }
+.chip-accent { background: var(--c-accent); color: #fff; border-radius: var(--radius-pill); }
+.chip-good { background: var(--c-good); color: #fff; border-radius: var(--radius-pill); }
+.chip-improving { background: var(--c-improving); color: #fff; border-radius: var(--radius-pill); }
+.chip-effort { background: var(--c-effort); color: #fff; border-radius: var(--radius-pill); }
+.chip-ghost { background: rgba(255, 255, 255, 0.14); color: #fff; }
+.chip-provisional { background: var(--c-warn-bg); color: var(--c-warn-text); font-size: 10px; padding: 1px 8px; border-radius: var(--radius-pill); }
+.chip-light { background: #fff; color: #444; border-radius: var(--radius-pill); font-size: 10px; padding: 2px 8px; }
+
+/* ───────── 밝은 모달 ───────── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: var(--c-overlay);
+  display: grid;
+  place-items: center;
+}
+.sheet {
+  position: relative;
+  width: 510px;
+  max-width: calc(100vw - 32px);
+  background: var(--c-sheet);
+  border-radius: var(--radius);
+  padding: 44px 52px 40px;
+  color: var(--c-sheet-title);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.sheet-title { font-size: 28px; font-weight: 700; color: var(--c-sheet-title); text-align: center; }
+.sheet-sub { font-size: 16px; color: var(--c-sheet-sub); text-align: center; }
+.sheet-label { font-size: 16px; font-weight: 700; color: var(--c-sheet-label); }
+.sheet-close {
+  position: absolute;
+  right: 22px;
+  top: 16px;
+  font-size: 28px;
+  color: #7c6f73;
+  line-height: 1;
+}
+.sheet-actions { display: flex; gap: 12px; justify-content: center; }
+
+.input {
+  width: 100%;
+  height: 64px;
+  padding: 0 18px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--c-input-line);
+  background: var(--c-input);
+  color: var(--c-sheet-title);
+  font-size: 18px;
+}
+.input::placeholder { color: var(--c-placeholder); }
+.input:focus { outline: 2px solid #d9a7bd; }
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 60px;
+  padding: 0 22px;
+  border-radius: var(--radius-pill);
+  background: var(--c-search);
+  border: 1px solid var(--c-search-line);
+}
+.search input { flex: 1; border: 0; background: none; font-size: 18px; color: var(--c-sheet-title); outline: none; }
+.search input::placeholder { color: var(--c-placeholder); }
+
+/* ───────── 모드 탭 ───────── */
+.mode-tabs {
+  position: absolute;
+  left: 50%;
+  top: 28px;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  height: 61px;
+  padding: 2px;
+  border-radius: var(--radius-lg);
+  background: var(--c-tab-track);
+  border: 2px solid var(--c-tab-track-line);
+}
+.mode-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 34px;
+  border-radius: var(--radius-lg);
+  font-size: 16px;
+  font-weight: 700;
+  color: #ddd;
+}
+.mode-tab img { width: 20px; height: 20px; }
+.mode-tab.is-active { background: var(--c-tab-active); border: 2px solid var(--c-tab-active-line); color: #fff; }
+
+/* ───────── 참가자·친구 목록 ───────── */
+.avatar {
+  flex: none;
+  width: 33px;
+  height: 33px;
+  border-radius: var(--radius-xs);
+  display: inline-grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.45);
+}
+.people { display: flex; flex-direction: column; gap: 12px; }
+.person { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border-radius: var(--radius-xs); padding: 2px; }
+.person.is-clickable:hover { background: rgba(255, 255, 255, 0.08); }
+.person-name { font-size: 13px; font-weight: 700; }
+.person-status { display: flex; align-items: center; gap: 4px; font-size: 8px; color: var(--c-text-dim); }
+.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--c-offline); }
+.dot.is-online { background: var(--c-online); }
+.dot.is-away { background: var(--c-away); }
+.panel-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 22px;
+  border-radius: var(--radius-pill);
+  background: rgba(144, 124, 107, 0.6);
+  border: 1px solid #a7998a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ───────── 루틴 목록 ───────── */
+.routine-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--c-row);
+  font-size: 11px;
+}
+.routine-row.is-active { background: var(--c-row-active); }
+.routine-row.is-active .routine-no { color: var(--c-row-active-num); }
+.routine-row.is-done { opacity: 0.6; }
+.routine-no { font-size: 11px; color: var(--c-text-dim); width: 18px; }
+.routine-name { font-weight: 700; color: #fff; }
+.routine-amount { margin-left: auto; font-size: 9px; color: var(--c-text-dim); white-space: nowrap; }
+.routine-tag { font-size: 8px; color: var(--c-text-dim); }
+.guide-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--c-row-guide); }
+
+/* ───────── 아래 요약 바 ───────── */
+.summary-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: 95px;
+  padding: 8px 14px 8px 10px;
+  background: var(--c-glass);
+  border: 1px solid var(--c-glass-line);
+  border-radius: var(--radius-lg);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+}
+.summary-thumb { width: 66px; height: 70px; border-radius: var(--radius-sm); object-fit: cover; flex: none; background: #d8d1e2; }
+.summary-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 0 32px;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+}
+.summary-label { font-size: 15px; color: rgba(255, 255, 255, 0.55); white-space: nowrap; }
+.summary-value { font-size: 20px; font-weight: 700; white-space: nowrap; }
+
+/* ───────── 진행 링 ───────── */
+.ring { position: relative; width: 140px; height: 140px; flex: none; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring-text { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.ring-value { font-size: 36px; font-weight: 800; color: var(--c-ring-text); line-height: 1; }
+.ring-max { font-size: 16px; color: var(--c-text-muted); margin-top: 4px; }
+
+/* ───────── 진행 막대 ───────── */
+.bar { height: 10px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.18); overflow: hidden; }
+.bar-fill { height: 100%; border-radius: inherit; background: var(--grad-progress); transition: width 0.3s; }
+
+/* 긴 설명 두 줄 자르기 */
+.clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* 결과·기록 표의 점선 구분 */
+.dashed-list > * + * { border-top: 1px dashed rgba(255, 255, 255, 0.55); }
+
+/* ───────── 카메라 ───────── */
+.camera-box {
+  position: relative;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--c-camera-box);
+  display: grid;
+  place-items: center;
+}
+.camera-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+.camera-box-chip { position: absolute; left: 14px; top: 14px; z-index: 1; }
+.camera-off { background: var(--c-camera-off); border-radius: var(--radius-sm); padding: 8px; }
+.camera-off-inner { background: var(--c-camera-off-inner); border-radius: var(--radius-sm); display: grid; place-items: center; text-align: center; font-size: 11px; color: #fff; }
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px 3px 10px;
+  border-radius: var(--radius-pill);
+  background: #fff;
+  color: #444;
+  font-size: 10px;
+  font-weight: 600;
+}
+.toggle-track { position: relative; width: 20px; height: 11px; border-radius: 6px; background: #c9c9c9; }
+.toggle-track::after { content: ''; position: absolute; top: 1.5px; left: 1.5px; width: 8px; height: 8px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.toggle.is-on .toggle-track { background: #5bc062; }
+.toggle.is-on .toggle-track::after { left: 10.5px; }
+
+.check-item { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--c-text-soft); }
+.check-item img { width: 18px; height: 18px; }
+button.check-item:hover { color: #fff; }
+
+/* ───────── 목표 카드 ───────── */
+.goal-card {
+  position: relative;
+  width: 225px;
+  height: 355px;
+  border-radius: var(--radius);
+  background: var(--c-goal);
+  border: 1px solid var(--c-goal-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 76px;
+  gap: 8px;
+  text-align: center;
+  transition: transform 0.12s;
+}
+.goal-card:hover { transform: translateY(-3px); }
+.goal-card.is-selected { background: var(--c-goal-selected); border: 2px solid var(--c-goal-selected-line); box-shadow: var(--shadow-goal-selected); }
+.goal-card-title { font-size: 23px; font-weight: 600; color: #fff; margin-top: 10px; }
+.goal-card-desc { font-size: 16px; color: #eaeaea; line-height: 1.35; }
+.goal-icon { position: relative; overflow: hidden; flex: none; }
+.goal-icon img { position: absolute; max-width: none; }
+
+/* ───────── 로딩 카드 ───────── */
+.loading-card {
+  width: 484px;
+  min-height: 502px;
+  border-radius: var(--radius);
+  background: var(--c-card);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 40px 44px;
+  text-align: center;
+}
+
+/* ───────── 토스트 ───────── */
+.toast {
+  position: fixed;
+  top: 110px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  padding: 12px 26px;
+  border-radius: var(--radius-pill);
+  background: rgba(46, 49, 62, 0.85);
+  border: 1px solid var(--c-glass-line);
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ───────── 캐릭터 자리 (3D 연결 전) ───────── */
+.figure { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); }
+.figure img { width: 56px; height: 56px; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25)); }
+.figure span { padding: 2px 10px; border-radius: var(--radius-pill); background: rgba(46, 49, 62, 0.6); text-shadow: none; }
+.figure.is-self img { outline: 3px solid #fff; border-radius: 50%; }
+.figure.is-clickable { cursor: pointer; }
+.figure.is-clickable:hover img { transform: translateY(-3px); }
+.figure.is-idle img { opacity: 0.7; }

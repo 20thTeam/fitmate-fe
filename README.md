@@ -34,12 +34,23 @@ src/
     local/               백엔드 없이 동작하는 구현 (localStorage + BroadcastChannel)
   lib/recommend.ts       규칙 기반 추천 (로컬 폴백)
   config/provisional.ts  ⚠️ PM 미승인 임시값 모음 (운동 목록, 난도 규칙 등)
-  hooks/useCamera.ts     카메라 권한·스트림
+  hooks/
+    useCamera.ts         카메라 권한·스트림·장치 선택
+    useRoom.ts           실시간 운동방 입장·참가자·응원
+    useWorkout.ts        내 운동 진행 (세트·유효 횟수·일시정지 제외 시간)
+  components/            ui(공통 조각), Backdrop(배경), CameraCheck, EnterLoading, GoalIcon
+    room/                운동방 조각: Scene(3D 무대+패널, 실패 시 2D 그림), ModeTabs, ParticipantPanel, RoutinePanels,
+                         SummaryBar, GuideScreen, CharacterFloor, WorkoutHud, ProgressRing, InviteModal
+    three/               3D 운동방: Room3D(캔버스·카메라), Environment(무대·스크린·나무), Characters3D, layout(스크린 DOM 겹치기)
+  styles/                디자인 시스템: tokens.css(색·모양 값, friend/public 테마), base.css, components.css
+  assets/                Figma 시안에서 받은 배경·아이콘·캐릭터 그림
   pages/                 화면 (유저플로우 v5 순서)
   store/app.ts           클라이언트 상태
 ```
 
 ## 화면 ↔ 기능 매핑
+
+디자인 기준은 Figma `1호선톤` 파일(1440×1024)이에요. 친구 화면은 `friend` 테마(선셋·보라), 공개 운동방과 그 결과는 `public` 테마(바다·파랑)예요.
 
 | 경로 | 화면 | 기능 ID |
 |---|---|---|
@@ -47,11 +58,11 @@ src/
 | `/profile` | 닉네임·캐릭터 | F-MZLVEJ |
 | `/home` | 홈 | F-HIPEHA |
 | `/goal` | 목표 선택 + 추천 로딩 | F-FTENXM, F-UZFEMP |
-| `/routine/:id` | 루틴 확인 | F-WBCAEC |
-| `/room/:routineId` | 파티 운동방 | F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ, F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV |
-| `/result/:sessionId` | 결과 + 2회차 추천 | F-XXCKUD, F-SYGFQC, F-WFAMYP |
+| `/routine/:id` | (예전 주소) `/room/:id`로 이동 | — |
+| `/room/:routineId` | 친구 운동방 입장 대기(루틴 확인·친구 초대) → 카메라 확인 → 입장 로딩 → 운동 진행 → 휴식 | F-WBCAEC, F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ, F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV |
+| `/result/:sessionId` | 운동 완료 + 다음 회차 추천(이전 회차 비교) | F-XXCKUD, F-SYGFQC, F-WBCAEC, F-WFAMYP |
 | `/history` | 성장 기록 | F-YBENHN |
-| `/sunset` | 선셋 에어로빅 | F-DXORMB (P1) |
+| `/sunset` | 공개 운동방(선셋 에어로빅) 입장 대기 → 카메라 확인 → 운동 진행 (`?sunset=open`으로 개발 중 오픈 상태 확인) | F-DXORMB (P1) |
 
 ## 백엔드 연동 가이드
 
@@ -69,7 +80,7 @@ src/
 | record | saveSession | `POST /sessions` (sessionId로 중복 저장 방지) |
 | record | getSession / listSessions | `GET /sessions/:id`, `GET /users/:id/sessions` |
 | team | applySession / get | `POST /teams/:roomId/apply`, `GET /teams/:roomId` |
-| realtime | join | WebSocket `/ws?room=` |
+| realtime | join(roomId, me, { maxParticipants, initial }) | WebSocket `/ws?room=` (친구 파티 5명 제한, 선셋은 제한 없음) |
 
 실시간 메시지(JSON): `hello | state {Participant}`, `bye {userId}`, `pose {PoseFrame}`, `cheer {CheerEvent}`.
 서버는 같은 방에 브로드캐스트하고, `cheer`는 `toUserId`에게만 전달, 방 인원 5명 초과 시 거절.

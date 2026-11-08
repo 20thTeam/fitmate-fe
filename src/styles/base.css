@@ -1,0 +1,46 @@
+/* 전역 기본값과 레이아웃 도우미. 기준 화면은 데스크톱 1440×1024, 최소 1280. */
+* { box-sizing: border-box; }
+
+html, body, #root { margin: 0; min-height: 100%; min-width: 1280px; }
+
+body {
+  font-family: var(--font);
+  color: var(--c-text);
+  background: #2b2735;
+  -webkit-font-smoothing: antialiased;
+  /* 3D 무대를 끌거나 패널을 누를 때 글자가 파랗게 선택되지 않게 한다. 입력칸은 아래에서 다시 허용 */
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, [contenteditable='true'] { -webkit-user-select: text; user-select: text; }
+
+button { font: inherit; color: inherit; cursor: pointer; border: 0; background: none; padding: 0; }
+button:disabled { cursor: not-allowed; }
+input, select { font: inherit; }
+a { color: inherit; }
+h1, h2, h3, p { margin: 0; }
+img { display: block; }
+
+:focus-visible { outline: 3px solid rgba(253, 255, 183, 0.9); outline-offset: 2px; }
+
+.row { display: flex; gap: 16px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 16px; }
+.between { justify-content: space-between; }
+.center { align-items: center; justify-content: center; text-align: center; }
+.grow { flex: 1; min-width: 0; }
+.wrap { flex-wrap: wrap; }
+.list-plain { list-style: none; padding: 0; margin: 0; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* 글자 크기 단계 (시안 기준) */
+.t-display { font-size: 40px; font-weight: 700; letter-spacing: -0.01em; }
+.t-title { font-size: 32px; font-weight: 700; }
+.t-h2 { font-size: 24px; font-weight: 700; }
+.t-h3 { font-size: 20px; font-weight: 700; }
+.t-body { font-size: 16px; }
+.t-small { font-size: 13px; }
+.t-xs { font-size: 11px; }
+.t-soft { color: var(--c-text-soft); }
+.t-muted { color: var(--c-text-muted); }
+.t-danger { color: var(--c-danger); }
+.t-num { font-size: 42px; font-weight: 700; letter-spacing: -0.01em; }

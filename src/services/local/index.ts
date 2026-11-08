@@ -3,33 +3,34 @@
 // 서로 다른 PC 연결은 팀 백엔드(WebSocket 등)가 붙어야 한다.
 
 import type { GoalId, Profile, Routine, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { RecordService, ProfileService, RoutineService, Services, TeamService } from '../ports'
+import type { ProfileService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
 
-const K = {
+const KEY = {
   profile: 'fitmate.profile',
   routines: 'fitmate.routines',
   sessions: 'fitmate.sessions',
-  team: (roomId: string) => `fitmate.team.${roomId}`,
 }
 
 const profile: ProfileService = {
   async restore() {
-    return readJson<Profile | null>(K.profile, null)
+    return readJson<Profile | null>(KEY.profile, null)
   },
   async create({ nickname, characterId }) {
     const p: Profile = { userId: uid(), nickname, characterId }
-    writeJson(K.profile, p)
+    writeJson(KEY.profile, p)
     return p
   },
 }
 
+const readRoutines = () => readJson<Record<string, Routine>>(KEY.routines, {})
+
 function saveRoutine(r: Routine) {
-  const all = readJson<Record<string, Routine>>(K.routines, {})
+  const all = readRoutines()
   all[r.routineId] = r
-  writeJson(K.routines, all)
+  writeJson(KEY.routines, all)
   return r
 }
 
@@ -39,30 +40,31 @@ const routine: RoutineService = {
   },
   async recommendNext(session) {
     // 같은 세션으로 이미 만든 추천이 있으면 그대로 돌려준다 (결과 화면 재방문 대비)
-    const existing = Object.values(readJson<Record<string, Routine>>(K.routines, {})).find(
-      (r) => r.basedOnSessionId === session.sessionId,
-    )
+    const existing = Object.values(readRoutines()).find((r) => r.basedOnSessionId === session.sessionId)
     if (existing) return existing
-    const prev = await routine.get(session.routineId)
-    if (!prev) throw new Error('이전 루틴을 찾을 수 없습니다')
+    if (!session.routineId) throw new Error('루틴이 없는 세션은 다음 회차 추천에 쓰지 않아요')
+    const prev = readRoutines()[session.routineId]
+    if (!prev) throw new Error('이전 루틴을 찾을 수 없어요')
     return saveRoutine(buildNextRoutine(prev, session))
   },
   async get(routineId) {
-    return readJson<Record<string, Routine>>(K.routines, {})[routineId] ?? null
+    return readRoutines()[routineId] ?? null
   },
 }
 
+const readSessions = () => readJson<WorkoutSession[]>(KEY.sessions, [])
+
 const record: RecordService = {
   async saveSession(s) {
-    const all = readJson<WorkoutSession[]>(K.sessions, [])
+    const all = readSessions()
     if (!all.some((x) => x.sessionId === s.sessionId)) all.push(s)
-    writeJson(K.sessions, all)
+    writeJson(KEY.sessions, all)
   },
   async getSession(id) {
-    return readJson<WorkoutSession[]>(K.sessions, []).find((s) => s.sessionId === id) ?? null
+    return readSessions().find((s) => s.sessionId === id) ?? null
   },
   async listSessions(userId) {
-    return readJson<WorkoutSession[]>(K.sessions, []).filter((s) => s.userId === userId)
+    return readSessions().filter((s) => s.userId === userId)
   },
 }
 
@@ -72,12 +74,8 @@ const team: TeamService = {
     return team.get(roomId)
   },
   async get(roomId) {
-    return readJson<TeamProgress>(K.team(roomId), {
-      teamId: roomId,
-      gainedXp: null,
-      totalXp: null,
-      level: null,
-    })
+    const empty: TeamProgress = { teamId: roomId, gainedXp: null, totalXp: null, level: null, nextLevelXp: null }
+    return empty
   },
 }
 

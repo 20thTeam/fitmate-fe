@@ -1,12 +1,11 @@
 import { useEffect, useState, type ReactNode } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { createBrowserRouter, Navigate, RouterProvider, useParams } from 'react-router-dom'
 import { services } from './services'
 import { useApp } from './store/app'
 import Landing from './pages/Landing'
 import ProfileSetup from './pages/ProfileSetup'
 import Home from './pages/Home'
 import GoalSelect from './pages/GoalSelect'
-import RoutineConfirm from './pages/RoutineConfirm'
 import PartyRoom from './pages/PartyRoom'
 import Result from './pages/Result'
 import History from './pages/History'
@@ -18,36 +17,40 @@ function RequireProfile({ children }: { children: ReactNode }) {
   return profile ? children : <Navigate to="/profile" replace />
 }
 
+const guard = (el: ReactNode) => <RequireProfile>{el}</RequireProfile>
+
+/** 예전 '추천 루틴 확인' 주소. 루틴 확인은 운동방 입장 대기 화면으로 합쳐졌다 (Figma 운동방 시안). */
+function RoutineRedirect() {
+  const { routineId = '' } = useParams()
+  return <Navigate to={`/room/${routineId}`} replace />
+}
+
+// 운동 중 이탈 확인(useBlocker)을 쓰려고 데이터 라우터로 만든다 (F-SZCKIV)
+const router = createBrowserRouter([
+  { path: '/', element: <Landing /> },
+  { path: '/profile', element: <ProfileSetup /> },
+  { path: '/home', element: guard(<Home />) },
+  { path: '/goal', element: guard(<GoalSelect />) },
+  { path: '/routine/:routineId', element: <RoutineRedirect /> },
+  { path: '/room/:routineId', element: guard(<PartyRoom />) },
+  { path: '/result/:sessionId', element: guard(<Result />) },
+  { path: '/history', element: guard(<History />) },
+  { path: '/sunset', element: guard(<Sunset />) },
+  { path: '*', element: <Navigate to="/" replace /> },
+])
+
 export default function App() {
   const setProfile = useApp((s) => s.setProfile)
-  const [ready, setReady] = useState(false)
+  const [isReady, setIsReady] = useState(false)
 
   // 같은 브라우저 재방문 시 임시 사용자 복원 (F-MZLVEJ 권장안)
   useEffect(() => {
-    services.profile.restore().then((p) => {
-      if (p) setProfile(p)
-      setReady(true)
-    })
+    services.profile
+      .restore()
+      .then((p) => p && setProfile(p))
+      .finally(() => setIsReady(true))
   }, [setProfile])
 
-  if (!ready) return null
-
-  const guard = (el: ReactNode) => <RequireProfile>{el}</RequireProfile>
-
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/profile" element={<ProfileSetup />} />
-        <Route path="/home" element={guard(<Home />)} />
-        <Route path="/goal" element={guard(<GoalSelect />)} />
-        <Route path="/routine/:routineId" element={guard(<RoutineConfirm />)} />
-        <Route path="/room/:routineId" element={guard(<PartyRoom />)} />
-        <Route path="/result/:sessionId" element={guard(<Result />)} />
-        <Route path="/history" element={guard(<History />)} />
-        <Route path="/sunset" element={guard(<Sunset />)} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  if (!isReady) return null
+  return <RouterProvider router={router} />
 }

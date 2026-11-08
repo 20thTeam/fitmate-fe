@@ -1,0 +1,111 @@
+/* FITMATE 디자인 토큰 — Figma '1호선톤' 시안(1440×1024)에서 뽑은 값.
+   테마는 두 가지: friend(선셋·보라) / public(바다·파랑). data-theme 속성으로 바꾼다.
+   시안 값을 바꿀 때는 이 파일만 고친다. */
+:root,
+[data-theme='friend'] {
+  /* 글자 */
+  --font: 'Pretendard Variable', Pretendard, system-ui, -apple-system, sans-serif;
+  --c-text: #ffffff;
+  --c-text-soft: #d3d3d3;
+  --c-text-muted: #b5a9b4;
+  --c-text-dim: #d9d9d9;
+  --c-title-soft: #d8cdcd;
+  --c-ink: #343147; /* 밝은 배경 위 로고 */
+
+  /* 배경 위 어둡게 덮는 막 */
+  --c-dim: rgba(52, 56, 67, 0.5);
+
+  /* 운동방 유리 패널 */
+  --c-glass: rgba(46, 49, 62, 0.5);
+  --c-glass-line: #807b79;
+  --c-glass-sm: rgba(41, 43, 56, 0.5);
+  --c-glass-sm-line: #474956;
+  --c-row: #4a4a54;
+  --c-row-active: #594c50;
+  --c-row-active-num: #b358b1;
+  --c-row-guide: #585858;
+
+  /* 결과·기록 카드 (테마별) */
+  --c-card: rgba(95, 81, 110, 0.8);
+  --c-pill-secondary: rgba(69, 54, 87, 0.6);
+  --grad-primary: linear-gradient(90deg, rgba(184, 124, 255, 0.6), rgba(166, 124, 213, 0.6));
+  --grad-progress: linear-gradient(90deg, #d86fae, #9b7fe0);
+  --c-accent: #967dd9;
+  --c-accent-text: #b755c6;
+  --c-th: #ccbddc;
+  --c-row-highlight: rgba(65, 53, 95, 0.6);
+  --c-chart: #c79ee6;
+
+  /* 버튼 */
+  --grad-plum: linear-gradient(90deg, #9f6e8c, #5a4753);
+  --grad-brown: linear-gradient(90deg, #725f60, #99896a);
+  --c-brown: #725f60;
+  --c-rose: #bfa1a3;
+  --grad-disabled: linear-gradient(90deg, #c5c4ce, #8e8ea2);
+
+  /* 탭 */
+  --c-tab-track: #575b6b;
+  --c-tab-track-line: #959595;
+  --c-tab-active: #907c6b;
+  --c-tab-active-line: #606060;
+
+  /* 밝은 모달 (프로필·초대) */
+  --c-sheet: #f7e7ed;
+  --c-sheet-title: #413437;
+  --c-sheet-sub: #948085;
+  --c-sheet-label: #554b4d;
+  --c-input: #f1e4e9;
+  --c-input-line: #f2e1e8;
+  --c-search: #e9dee2;
+  --c-search-line: #ecd4dd;
+  --c-placeholder: #b8b8b8;
+  --c-overlay: rgba(0, 0, 0, 0.5);
+
+  /* 목표 카드 */
+  --c-goal: rgba(168, 121, 145, 0.65);
+  --c-goal-line: #c79797;
+  --c-goal-selected: rgba(216, 168, 178, 0.8);
+  --c-goal-selected-line: #fdffb7;
+  --shadow-goal-selected: 0 4px 11px 7px #ede6cb;
+
+  /* 상태 색 */
+  --c-online: #4cc75a;
+  --c-away: #f0a33a;
+  --c-offline: #9a9a9a;
+  --c-good: #538b4b;
+  --c-improving: #7661a6;
+  --c-effort: #8e8e8e;
+  --c-easy-bg: #9cd792;
+  --c-easy-text: #335634;
+  --c-warn-bg: #ffe2a8;
+  --c-warn-text: #7a5200;
+  --c-danger: #ff8a8a;
+  --c-ring-track: #6d5f63;
+  --c-ring: #e8c46a;
+  --c-ring-text: #dedede;
+  --c-camera-box: #74667b;
+  --c-camera-off: #42444e;
+  --c-camera-off-inner: #292b38;
+  --c-coach-title: #c0a777;
+
+  /* 모양 */
+  --radius-xs: 8px;
+  --radius-sm: 10px;
+  --radius: 20px;
+  --radius-lg: 30px;
+  --radius-pill: 999px;
+  --blur: blur(8px);
+}
+
+[data-theme='public'] {
+  --c-card: rgba(81, 92, 110, 0.8);
+  --c-pill-secondary: rgba(54, 66, 87, 0.6);
+  --grad-primary: linear-gradient(90deg, rgba(124, 172, 255, 0.6), rgba(124, 135, 213, 0.6));
+  --grad-progress: linear-gradient(90deg, #7d8fe0, #7cc0e8);
+  --c-accent: #7d95d9;
+  --c-accent-text: #8fb4ff;
+  --c-th: #bdc8dc;
+  --c-row-highlight: rgba(53, 65, 95, 0.6);
+  --c-chart: #9ea9e6;
+  --c-row-active-num: #7da0e0;
+}

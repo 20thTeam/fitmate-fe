@@ -10,17 +10,18 @@ export const SUNSET_ROOM_ID = 'sunset-public'
 interface AppState {
   profile: Profile | null
   goal: GoalId | null
-  currentRoutineId: string | null
+  /** 공개 운동방에서 '친구 운동방' 탭을 누르면 돌아갈 마지막 루틴 */
+  lastRoutineId: string | null
   setProfile: (p: Profile) => void
   setGoal: (g: GoalId) => void
-  setRoutine: (id: string) => void
+  setLastRoutineId: (id: string) => void
 }
 
 export const useApp = create<AppState>((set) => ({
   profile: null,
   goal: null,
-  currentRoutineId: null,
+  lastRoutineId: null,
   setProfile: (profile) => set({ profile }),
   setGoal: (goal) => set({ goal }),
-  setRoutine: (currentRoutineId) => set({ currentRoutineId }),
+  setLastRoutineId: (lastRoutineId) => set({ lastRoutineId }),
 }))

@@ -3,12 +3,15 @@
 
 export type GoalId = 'weight_loss' | 'posture' | 'strength' | 'stamina'
 
-export const GOALS: { id: GoalId; label: string }[] = [
-  { id: 'weight_loss', label: '체중 감량' },
-  { id: 'posture', label: '자세 개선' },
-  { id: 'strength', label: '근력 강화' },
-  { id: 'stamina', label: '체력 증진' },
+// 화면 문구는 Figma 목표 선택 시안을 따른다. id는 백엔드 계약이라 그대로 둔다.
+export const GOALS: { id: GoalId; label: string; desc: string }[] = [
+  { id: 'strength', label: '근력 운동', desc: '전신 근육을 탄탄하게!' },
+  { id: 'stamina', label: '유산소 운동', desc: '더 가볍게, 더 건강하게!' },
+  { id: 'posture', label: '스트레칭', desc: '오늘도 부드럽게!' },
+  { id: 'weight_loss', label: '다이어트 운동', desc: '지금 바로 시작해요!' },
 ]
+
+export const goalLabel = (g: GoalId | null | undefined) => GOALS.find((x) => x.id === g)?.label ?? ''
 
 /** 임시 사용자 (F-MZLVEJ). 정식 회원가입 없음. */
 export interface Profile {
@@ -21,9 +24,11 @@ export interface Profile {
 export interface RoutineItem {
   exerciseId: string
   name: string
+  /** 운동 설명 태그 (예: '자세 개선 · 하체 근력 강화') */
+  tag: string
   order: number
   sets: number
-  /** 횟수형이면 targetReps, 시간형이면 targetSeconds 중 하나만 채운다. */
+  /** 횟수형이면 targetReps, 시간형이면 targetSeconds 중 하나만 채운다. (세트당 목표) */
   targetReps?: number
   targetSeconds?: number
 }
@@ -35,7 +40,8 @@ export interface Routine {
   round: number
   goal: GoalId
   items: RoutineItem[]
-  /** 2회차 이상: 근거가 된 이전 세션과 변경 이유 */
+  /** 2회차 이상: 근거가 된 이전 루틴·세션과 변경 이유 */
+  prevRoutineId?: string
   basedOnSessionId?: string
   changeReasons?: string[]
   /** 시연용 임시 규칙으로 만들어졌는지. true면 화면에 임시 표시를 한다. */
@@ -45,35 +51,48 @@ export interface Routine {
 /** 운동 1개의 실제 수행 기록 (F-XNIIJM dataSpec). */
 export interface ExerciseRecord {
   exerciseId: string
+  name: string
   validReps: number
   validSeconds: number
+  /** 실제 운동한 시간 (일시정지 제외) */
   durationMs: number
   completed: boolean
   /** 측정된 자세 피드백만 담는다. 없으면 빈 배열. */
-  postureNotes: string[]
+  postureNotes: { kind: 'good' | 'fix'; text: string }[]
 }
+
+export type SessionKind = 'party' | 'sunset'
 
 /** 한 회차 운동 세션 결과 (F-XXCKUD). */
 export interface WorkoutSession {
   sessionId: string
+  kind: SessionKind
   userId: string
   roomId: string
-  routineId: string
-  round: number
-  goal: GoalId
+  /** 선셋은 루틴이 없다 */
+  routineId: string | null
+  round: number | null
+  goal: GoalId | null
   startedAt: number
   endedAt: number
+  /** 일시정지를 뺀 실제 운동 시간 */
+  activeMs: number
   records: ExerciseRecord[]
 }
 
-export type ParticipantStatus = 'waiting' | 'exercising' | 'resting' | 'done'
+export type ParticipantStatus = 'waiting' | 'ready' | 'exercising' | 'paused' | 'resting' | 'done'
 
-/** 운동방 참가자 상태 (F-ERSUOK, F-WJAOCO). */
+/** 운동방 참가자 상태 (F-ERSUOK, F-WJAOCO). 모두 실제 참가자가 보낸 값. */
 export interface Participant {
   userId: string
   nickname: string
   characterId: string
+  goal?: GoalId
+  /** 대기실에서 보여줄 이번 회차 운동 요약 */
+  routineSummary?: string
   currentExercise?: string
+  /** 현재 운동의 유효 횟수 */
+  validReps?: number
   status: ParticipantStatus
   /** 마지막 메시지 수신 시각. 오래되면 '연결 불안정'으로 표시한다. */
   lastSeenAt: number
@@ -102,4 +121,5 @@ export interface TeamProgress {
   gainedXp: number | null
   totalXp: number | null
   level: number | null
+  nextLevelXp: number | null
 }
