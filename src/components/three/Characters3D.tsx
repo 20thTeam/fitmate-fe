@@ -1,6 +1,6 @@
 // 무대 위 3D 캐릭터. 프로필 캐릭터에 3D 모델(GLB)이 있으면 모델을, 없으면 말랑한 공 모양을 세운다.
 // 실제 참가자만 세우고, 운동 중인 사람만 움직인다 (가짜 참가자·자동 모션 금지).
-// 관절 좌표(PoseFrame)로 동작을 맞추는 건 다음 단계 — 지금은 상태(운동 중/대기)만 반영한다.
+// 내 캐릭터는 내 카메라 관절 좌표(livePose)로 팔다리를 움직인다 (#10). 친구 캐릭터는 아직 상태(운동 중/대기)만 반영한다.
 // 이름표는 Room3D가 DOM으로 겹친다.
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -9,8 +9,9 @@ import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js
 import { Box3, BufferAttribute, Color, SphereGeometry, type Group, type Material, type Mesh } from 'three'
 import type { Participant } from '../../types/domain'
 import { characterOf } from '../../config/characters'
+import { hasFreshLivePose, livePose } from '../../lib/pose/livePose'
 import ThreeBoundary from './ThreeBoundary'
-import { relaxArms } from './rig'
+import { createPoseRig, relaxArms } from './rig'
 
 import { BODY_R, MODEL_H, figureX } from './layout'
 
@@ -92,7 +93,7 @@ function BallBody({ characterId, index, isExercising, isFaded }: BodyProps) {
  */
 function useCharacterModel(url: string) {
   const { scene } = useGLTF(url, false, false)
-  const { model, materials } = useMemo(() => {
+  const { model, materials, rig } = useMemo(() => {
     const root = cloneSkinned(scene)
     const cloned: Material[] = []
     root.traverse((o) => {
@@ -110,15 +111,17 @@ function useCharacterModel(url: string) {
     relaxArms(root)
     root.scale.setScalar(scale)
     root.position.y = -box.min.y * scale
-    return { model: root, materials: cloned }
+    // 팔을 내린 자세를 기본 자세로 기억한다
+    return { model: root, materials: cloned, rig: createPoseRig(root) }
   }, [scene])
   useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
-  return { model, materials }
+  return { model, rig }
 }
 
-function ModelBody({ url, index, isExercising, isFaded }: BodyProps & { url: string }) {
-  const { model } = useCharacterModel(url)
+function ModelBody({ url, index, isExercising, isFaded, isSelf }: BodyProps & { url: string; isSelf: boolean }) {
+  const { model, rig } = useCharacterModel(url)
   const bodyRef = useRef<Group>(null)
+  const isPosedRef = useRef(false)
 
   useEffect(() => {
     bodyRef.current?.traverse((o) => {
@@ -135,6 +138,17 @@ function ModelBody({ url, index, isExercising, isFaded }: BodyProps & { url: str
   useFrame((state) => {
     const body = bodyRef.current
     if (!body) return
+    // 내 카메라에서 관절이 잡히는 동안은 그 자세를 그대로 따라 한다
+    if (isSelf && rig && hasFreshLivePose(performance.now())) {
+      body.scale.set(1, 1, 1)
+      rig.apply(livePose.world)
+      isPosedRef.current = true
+      return
+    }
+    if (isPosedRef.current) {
+      rig?.relax()
+      isPosedRef.current = false
+    }
     const t = state.clock.elapsedTime + index * 0.7
     if (isExercising) {
       const bounce = Math.abs(Math.sin(t * 3.2))
@@ -172,7 +186,9 @@ function Figure({ participant, x, z, index, isSelf, onCheer }: FigureProps) {
     const root = rootRef.current
     if (!root) return
     const t = state.clock.elapsedTime + index * 0.7
-    root.position.y = isExercising ? Math.abs(Math.sin(t * 3.2)) * BOUNCE_H : 0
+    // 카메라 자세를 따라 하는 중이면 튀지 않는다 (발을 바닥에 붙여 둔다)
+    const isPosed = isSelf && !!modelUrl && hasFreshLivePose(performance.now())
+    root.position.y = isExercising && !isPosed ? Math.abs(Math.sin(t * 3.2)) * BOUNCE_H : 0
   })
 
   // 캔버스의 기본 커서(드래그용 grab)를 캐릭터 위에서만 손가락으로 바꾼다
@@ -205,7 +221,7 @@ function Figure({ participant, x, z, index, isSelf, onCheer }: FigureProps) {
           // 모델을 받는 동안·받지 못했을 때는 공 모양으로 대신 세운다
           <ThreeBoundary fallback={ball}>
             <Suspense fallback={ball}>
-              <ModelBody url={modelUrl} {...bodyProps} />
+              <ModelBody url={modelUrl} isSelf={isSelf} {...bodyProps} />
             </Suspense>
           </ThreeBoundary>
         ) : (
