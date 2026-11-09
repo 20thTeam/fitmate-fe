@@ -145,10 +145,11 @@ interface OverlayProps {
   tagRefs: RefObject<Map<string, HTMLElement>>
   tagIds: string[]
   rowZ: number
+  tagY: number
 }
 
 /** 스크린 내용·이름표 DOM을 3D 위치에 맞춘다. CameraRig 다음에 두어 같은 프레임의 카메라를 쓴다. */
-function OverlayProjector({ screenRef, tagRefs, tagIds, rowZ }: OverlayProps) {
+function OverlayProjector({ screenRef, tagRefs, tagIds, rowZ, tagY }: OverlayProps) {
   const temp = useMemo(() => new Vector3(), [])
   const point = useMemo(() => new Vector3(), [])
   const quad = useMemo(() => [0, 0, 0, 0, 0, 0, 0, 0], [])
@@ -168,7 +169,7 @@ function OverlayProjector({ screenRef, tagRefs, tagIds, rowZ }: OverlayProps) {
     tagIds.forEach((id, i) => {
       const tag = tagRefs.current.get(id)
       if (!tag) return
-      point.set(figureX(i, tagIds.length), TAG_Y, rowZ)
+      point.set(figureX(i, tagIds.length), tagY, rowZ)
       // 캐릭터는 스크린 앞에 서 있어서 스크린 뒤에서는 가려진다
       const isVisible = projectToPx(point, camera, size.width, size.height, temp, quad) && camera.position.z >= SCREEN_FACE_Z
       tag.style.visibility = isVisible ? 'visible' : 'hidden'
@@ -222,7 +223,7 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
         <Environment theme={theme} palette={palette} />
         {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={ROW_Z[view]} onCheer={onCheer} />}
         <CameraRig view={view} />
-        <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={ROW_Z[view]} />
+        <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={ROW_Z[view]} tagY={TAG_Y[view]} />
       </Canvas>
 
       {screen && (
