@@ -61,6 +61,19 @@ export const PROVISIONAL_POSE_RULES = {
   plank: { lineMin: 155, maxBodyTilt: 30, maxArmTilt: 40, settleMs: 700 },
 }
 
+/**
+ * 미정: 카메라 확인 화면 자동 판정 기준 (F-ZGIFAX). 개발팀 제안값.
+ * 몸 길이 = 코~발목 세로 길이 ÷ 화면 높이. 밝기는 0~255 평균 밝기.
+ */
+export const PROVISIONAL_CAMERA_CHECK = {
+  minVisibility: 0.5,
+  /** 관절이 화면 가장자리에서 이만큼 안쪽이어야 잘리지 않은 것으로 본다 */
+  edgeMargin: 0.02,
+  minBodySpan: 0.45,
+  maxBodySpan: 0.92,
+  minBrightness: 60,
+}
+
 /** 미정: 운동 간 휴식 길이. 와이어프레임 v3 예시(00:30)를 임시로 사용. 자동 전환은 하지 않는다. */
 export const PROVISIONAL_REST_SECONDS = 30
 
