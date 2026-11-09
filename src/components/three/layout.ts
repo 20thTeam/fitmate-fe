@@ -20,7 +20,11 @@ export const BODY_R = 0.36
  */
 export const ROW_Z = { tour: 4.3, front: 0.6 } as const
 const GAP = 1.4
-export const TAG_Y = BODY_R * 2 + 0.3
+/**
+ * 이름표 높이. 대기 화면은 머리 위, 운동 중에는 카메라가 낮아 머리 위 이름표가
+ * 스크린 아래 테두리에 겹쳐서 발밑에 단다 (#7).
+ */
+export const TAG_Y = { tour: BODY_R * 2 + 0.3, front: -0.12 } as const
 
 /** n명 중 i번째 캐릭터의 x 위치 (가운데 정렬) */
 export const figureX = (i: number, n: number) => (i - (n - 1) / 2) * GAP
