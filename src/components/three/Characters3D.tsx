@@ -139,9 +139,10 @@ function ModelBody({ url, index, isExercising, isFaded, isSelf }: BodyProps & { 
     const body = bodyRef.current
     if (!body) return
     // 내 카메라에서 관절이 잡히는 동안은 그 자세를 그대로 따라 한다
-    if (isSelf && rig && hasFreshLivePose(performance.now())) {
+    const now = performance.now()
+    if (isSelf && rig && hasFreshLivePose(now)) {
       body.scale.set(1, 1, 1)
-      rig.apply(livePose.world)
+      rig.apply(livePose.world, now)
       isPosedRef.current = true
       return
     }
