@@ -28,6 +28,8 @@ interface Props {
   nextAction: ReactNode
   /** [개발용] 버튼. 패널 바깥 위쪽에 띄운다 */
   devTools?: ReactNode
+  /** 내 카메라 위에 겹칠 것 (뼈대 캔버스, 인식 상태) */
+  cameraOverlay?: ReactNode
 }
 
 function Photo({ exerciseId, name, width, height }: { exerciseId: string; name: string; width: number; height: number }) {
@@ -42,7 +44,7 @@ function Photo({ exerciseId, name, width, height }: { exerciseId: string; name: 
   )
 }
 
-export default function WorkoutHud({ exerciseId, name, desc, meta, ring, stream, isCameraOn, notes, next, controls, nextAction, devTools }: Props) {
+export default function WorkoutHud({ exerciseId, name, desc, meta, ring, stream, isCameraOn, notes, next, controls, nextAction, devTools, cameraOverlay }: Props) {
   const recent = notes.slice(-3)
   return (
     <div className="row" style={{ position: 'absolute', left: 12, right: 12, bottom: 14, gap: 6, height: 192, alignItems: 'stretch' }}>
@@ -64,6 +66,7 @@ export default function WorkoutHud({ exerciseId, name, desc, meta, ring, stream,
               {isCameraOn ? '카메라 켜짐' : '카메라 꺼짐'}
             </span>
             <CameraPreview stream={stream} emptyText="카메라를 켜면 내 동작이 캐릭터에 반영됩니다." />
+            {stream && cameraOverlay}
           </div>
           <span className="t-xs t-soft" style={{ fontSize: 8 }}>영상은 내 브라우저 안에서만 쓰여요</span>
         </div>

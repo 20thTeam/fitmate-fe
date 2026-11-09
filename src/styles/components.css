@@ -237,6 +237,24 @@
   line-height: 1;
 }
 .sheet-actions { display: flex; gap: 12px; justify-content: center; }
+.sheet-points { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 15px; line-height: 1.5; color: var(--c-sheet-label); }
+.sheet-steps { margin: 0; padding: 16px 20px 16px 40px; display: flex; flex-direction: column; gap: 10px; border-radius: var(--radius-sm); background: rgba(255, 255, 255, 0.7); font-size: 15px; line-height: 1.5; color: var(--c-sheet-label); }
+
+/* 카메라 권한 안내: 브라우저 권한 창 흉내 */
+.permission-mock {
+  align-self: center; width: 300px; padding: 14px 16px; border-radius: 12px;
+  background: #fff; box-shadow: 0 6px 20px rgba(65, 52, 55, 0.16);
+  display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #3b3336;
+}
+.permission-mock-title { font-weight: 700; }
+.permission-mock-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.permission-mock-btn { padding: 5px 14px; border-radius: 999px; border: 1px solid #d8cdd0; color: #7c6f73; }
+.permission-mock-btn.is-allow { border-color: transparent; background: #3a6fd8; color: #fff; font-weight: 700; box-shadow: 0 0 0 3px rgba(58, 111, 216, 0.3); }
+
+/* 작은 탭 버튼 묶음 */
+.seg { align-self: center; display: inline-flex; padding: 3px; border-radius: 999px; background: rgba(255, 255, 255, 0.7); }
+.seg-item { padding: 6px 14px; border-radius: 999px; font-size: 13px; color: var(--c-sheet-sub); }
+.seg-item.is-active { background: #fff; color: var(--c-sheet-title); font-weight: 700; box-shadow: 0 1px 4px rgba(65, 52, 55, 0.15); }
 
 .input {
   width: 100%;
@@ -395,6 +413,17 @@
 }
 .camera-box video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 .camera-box-chip { position: absolute; left: 14px; top: 14px; z-index: 1; }
+/* 내 카메라 위 뼈대. 영상과 똑같이 좌우를 뒤집고 잘라 맞춘다 */
+.pose-overlay { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); pointer-events: none; }
+.pose-status {
+  position: absolute; left: 6px; right: 6px; bottom: 6px; z-index: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 4px 8px; border-radius: 8px;
+  background: rgba(30, 24, 36, 0.72); color: #fff; font-size: 11px; line-height: 1.35;
+}
+.pose-status.is-warn { background: rgba(160, 82, 38, 0.85); }
+.pose-status.is-error { background: rgba(150, 40, 60, 0.88); }
+.pose-status button { text-decoration: underline; font-weight: 700; flex: none; }
 .camera-off { background: var(--c-camera-off); border-radius: var(--radius-sm); padding: 8px; }
 .camera-off-inner { background: var(--c-camera-off-inner); border-radius: var(--radius-sm); display: grid; place-items: center; text-align: center; font-size: 11px; color: #fff; }
 

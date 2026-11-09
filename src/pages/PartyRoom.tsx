@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { services } from '../services'
 import { DEMO_ROOM_ID, useApp } from '../store/app'
@@ -12,6 +12,7 @@ import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
 import { useWorkout } from '../hooks/useWorkout'
 import { useNow } from '../hooks/useNow'
 import { useToast } from '../hooks/useToast'
+import { useRepCounting } from '../hooks/useRepCounting'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
 import ParticipantPanel, { OnlineCount } from '../components/room/ParticipantPanel'
@@ -19,6 +20,7 @@ import { RoutineOrderPanel, RoutineProgressPanel } from '../components/room/Rout
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
+import PoseStatus from '../components/room/PoseStatus'
 import InviteModal from '../components/room/InviteModal'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
@@ -97,6 +99,17 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
   const isLastSet = item ? workout.setNo >= item.sets : true
   const isWorkingOut = phase === 'play' || phase === 'rest'
 
+  // 카메라로 유효 횟수 세기 (F-XNIIJM). 모델은 카메라 확인 단계부터 미리 받는다
+  const poseCanvasRef = useRef<HTMLCanvasElement>(null)
+  const counting = useRepCounting({
+    exerciseId: item?.exerciseId,
+    stream: camera.stream,
+    shouldLoad: phase !== 'lobby',
+    isActive: phase === 'play' && workout.isRunning,
+    workout,
+    canvasRef: poseCanvasRef,
+  })
+
   // 운동 중 이탈 확인 (F-SZCKIV)
   const blocker = useBlocker(({ nextLocation }) => isWorkingOut && !isSaving && !nextLocation.pathname.startsWith('/result'))
 
@@ -118,6 +131,8 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
     { label: '친구 운동방 연결 확인', isDone: room.state === 'joined' && enterElapsed > ENTER_STEP_MS },
     { label: '운동장 불러오는 중', isDone: enterElapsed > ENTER_STEP_MS * 2 },
     { label: '카메라 불러오는 중', isDone: camera.isOn && enterElapsed > ENTER_STEP_MS * 3 },
+    // 모델을 못 받아도 운동은 할 수 있게 넘어간다 (운동 화면에서 다시 시도 안내)
+    { label: '자세 인식 준비 중', isDone: (counting.modelState === 'ready' || counting.modelState === 'error') && enterElapsed > ENTER_STEP_MS * 4 },
   ]
   const isEnterReady = enterSteps.every((s) => s.isDone)
   useEffect(() => {
@@ -302,6 +317,10 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
               isCameraOn={camera.isOn}
               notes={record.postureNotes}
               next={next ? { exerciseId: next.exerciseId, name: next.name, amount: shortAmountLabel(next) } : null}
+              cameraOverlay={<>
+                <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />
+                <PoseStatus {...counting} isRunning={workout.isRunning} onRetry={counting.retry} />
+              </>}
               controls={<>
                 <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={16} height={16} />자세 가이드 보기</button>
                 {workout.isRunning
