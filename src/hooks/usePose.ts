@@ -6,11 +6,12 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import type { PoseLandmarker } from '@mediapipe/tasks-vision'
 import wasmLoaderPath from '@mediapipe/tasks-vision/vision_wasm_internal.js?url'
 import wasmBinaryPath from '@mediapipe/tasks-vision/vision_wasm_internal.wasm?url'
+// 가벼운 모델(약 5.8MB). 3D 무대와 같이 돌아야 해서 정확도보다 속도를 택했다.
+// 시연장 인터넷이 불안해도 되도록 외부 서버가 아닌 우리 배포에서 받는다 (#4).
+// 원본: storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1
+import modelUrl from '../assets/models/pose_landmarker_lite.task?url'
 import type { Lm } from '../lib/pose/landmarks'
 import type { PoseInput } from '../lib/pose/repCounter'
-
-/** 가벼운 모델(약 5MB). 3D 무대와 같이 돌아야 해서 정확도보다 속도를 택했다 */
-const MODEL_URL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task'
 /** 이만큼 연속으로 못 찾으면 '놓침'으로 바꾼다 (잠깐 가려지는 건 무시) */
 const LOST_AFTER_FRAMES = 12
 const FOUND_AFTER_FRAMES = 3
@@ -28,7 +29,7 @@ function loadPoseModel() {
       const { PoseLandmarker } = await import('@mediapipe/tasks-vision')
       const create = (delegate: 'GPU' | 'CPU') =>
         PoseLandmarker.createFromOptions({ wasmLoaderPath, wasmBinaryPath }, {
-          baseOptions: { modelAssetPath: MODEL_URL, delegate },
+          baseOptions: { modelAssetPath: modelUrl, delegate },
           runningMode: 'VIDEO',
           numPoses: 1,
         })
