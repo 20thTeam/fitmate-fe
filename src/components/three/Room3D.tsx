@@ -213,11 +213,12 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
           intensity={1.5}
           color={palette.sun}
           castShadow
-          shadow-mapSize={[1024, 1024]}
-          shadow-camera-left={-12}
-          shadow-camera-right={12}
-          shadow-camera-top={10}
-          shadow-camera-bottom={-6}
+          // 무대 전체와 둘레 나무까지 그림자가 지도록 넓게 잡는다
+          shadow-mapSize={[2048, 2048]}
+          shadow-camera-left={-26}
+          shadow-camera-right={26}
+          shadow-camera-top={22}
+          shadow-camera-bottom={-22}
           shadow-bias={-0.0004}
         />
         <Environment theme={theme} palette={palette} />
