@@ -10,6 +10,7 @@ interface WorkoutActions {
   countValidRep: (n?: number) => void
   countValidSeconds: (n?: number) => void
   addPostureNote: (note: ExerciseRecord['postureNotes'][number]) => void
+  markMeasured: () => void
 }
 
 interface Options {
@@ -23,7 +24,7 @@ interface Options {
 
 export function useRepCounting({ exerciseId, stream, shouldLoad, isActive, workout, canvasRef }: Options) {
   const counter = useMemo(() => (exerciseId ? createRepCounter(exerciseId) : null), [exerciseId])
-  const { countValidRep, countValidSeconds, addPostureNote } = workout
+  const { countValidRep, countValidSeconds, addPostureNote, markMeasured } = workout
 
   // 멈추면 하던 동작은 버린다 (다시 시작할 때 이어서 세지 않게)
   useEffect(() => {
@@ -39,6 +40,11 @@ export function useRepCounting({ exerciseId, stream, shouldLoad, isActive, worko
   const onFrame = useCallback((input: PoseInput) => (counter ? counter.update(input, emit) : false), [counter, emit])
 
   const pose = usePose({ stream, shouldLoad, isActive: isActive && !!counter, onFrame, canvasRef })
+
+  // 운동 중에 자세가 인식되면 이 운동은 측정된 것으로 본다. 카메라·모델이 안 되면 NOT_MEASURED로 남는다
+  useEffect(() => {
+    if (isActive && !!counter && pose.isTracking) markMeasured()
+  }, [isActive, counter, pose.isTracking, markMeasured])
 
   return { ...pose, isSupported: !!counter, setupHint: counter?.setupHint ?? '' }
 }

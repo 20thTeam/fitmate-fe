@@ -12,6 +12,8 @@ import { Logo } from '../components/ui'
 
 /** 로딩 표시가 깜빡이고 사라지지 않게 최소한으로 보여주는 시간 */
 const MIN_LOADING_MS = 900
+/** 추천 응답이 이보다 늦으면 기다리는 중이라고 알려 준다 */
+const SLOW_RESPONSE_MS = 3000
 
 /** 시안처럼 설명을 두 줄로 나눈다 (쉼표가 있으면 쉼표 뒤, 없으면 마지막 띄어쓰기) */
 function splitTwoLines(text: string) {
@@ -28,10 +30,12 @@ export default function GoalSelect() {
   const preset = GOALS.find((g) => g.id === params.get('pick'))?.id ?? null
   const [picked, setPicked] = useState<GoalId | null>(preset)
   const [state, setState] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [isSlow, setIsSlow] = useState(false)
 
   const handleStart = async () => {
     if (!picked) return
     setState('loading')
+    const slowTimer = setTimeout(() => setIsSlow(true), SLOW_RESPONSE_MS)
     try {
       const [r] = await Promise.all([
         services.routine.recommendFirst(profile.userId, picked),
@@ -41,6 +45,9 @@ export default function GoalSelect() {
       nav(`/room/${r.routineId}`)
     } catch {
       setState('error')
+    } finally {
+      clearTimeout(slowTimer)
+      setIsSlow(false)
     }
   }
 
@@ -82,7 +89,11 @@ export default function GoalSelect() {
           <span aria-hidden>{isLoading ? '' : '>'}</span>
         </button>
         <p role="status" style={{ minHeight: 24, marginTop: 14, fontWeight: 600 }}>
-          {state === 'error' ? '루틴을 추천하지 못했어요. 다시 눌러 주세요.' : !picked ? '운동을 하나 골라 주세요' : ''}
+          {state === 'error'
+            ? '루틴을 추천하지 못했어요. 다시 눌러 주세요.'
+            : isLoading && isSlow
+              ? '추천 서버 응답이 늦어지고 있어요. 조금 더 걸리면 기본 규칙으로 추천해 드릴게요.'
+              : !picked ? '운동을 하나 골라 주세요' : ''}
         </p>
       </div>
     </Backdrop>

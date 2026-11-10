@@ -89,6 +89,8 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
   const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasSaveError, setHasSaveError] = useState(false)
+  // 선셋은 루틴이 없어 서버 운동 기록 대상이 아니다. 기록 ID만 미리 받아 둔다
+  const [sessionId, setSessionId] = useState<string | null>(null)
   const now = useNow(phase === 'play' || phase === 'entering', phase === 'entering' ? 100 : 1000)
 
   const blocker = useBlocker(({ nextLocation }) => phase === 'play' && !isSaving && !nextLocation.pathname.startsWith('/result'))
@@ -138,13 +140,20 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
   const handleCameraConfirmed = () => {
     setEnterStartedAt(Date.now())
     setPhase('entering')
+    if (!sessionId) services.record.startSession({ kind: 'sunset', routineId: null }).then(setSessionId).catch(() => {})
   }
 
   const finish = async () => {
     setIsSaving(true)
     const result = workout.finalize()
+    const id = sessionId ?? (await services.record.startSession({ kind: 'sunset', routineId: null }).catch(() => null))
+    if (!id) {
+      setIsSaving(false)
+      setHasSaveError(true)
+      return
+    }
     const session: WorkoutSession = {
-      sessionId: crypto.randomUUID(),
+      sessionId: id,
       kind: 'sunset',
       userId: profile.userId,
       roomId: SUNSET_ROOM_ID,

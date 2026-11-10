@@ -38,6 +38,8 @@ type Phase = 'lobby' | 'camera' | 'entering' | 'play' | 'rest'
 
 /** 입장 로딩 단계를 하나씩 체크해 보여주는 간격 */
 const ENTER_STEP_MS = 400
+/** 서버 응답이 이보다 늦으면 기다리는 중이라고 알려 준다 */
+const SLOW_RESPONSE_MS = 3000
 
 export default function PartyRoom() {
   const { routineId = '' } = useParams()
@@ -91,7 +93,11 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
   const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false)
   const [restStartedAt, setRestStartedAt] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSaveSlow, setIsSaveSlow] = useState(false)
   const [hasSaveError, setHasSaveError] = useState(false)
+  // 운동 기록 ID. 입장할 때 받아서 끝낼 때 그 ID로 확정한다 (재접속·중복 저장 방지)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [hasStartError, setHasStartError] = useState(false)
   const now = useNow(phase === 'rest' || phase === 'entering', phase === 'entering' ? 100 : 1000)
 
   const { item, record } = workout
@@ -133,6 +139,10 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
     { label: '카메라 불러오는 중', isDone: camera.isOn && enterElapsed > ENTER_STEP_MS * 3 },
     // 모델을 못 받아도 운동은 할 수 있게 넘어간다 (운동 화면에서 다시 시도 안내)
     { label: '자세 인식 준비 중', isDone: (counting.modelState === 'ready' || counting.modelState === 'error') && enterElapsed > ENTER_STEP_MS * 4 },
+    {
+      label: !sessionId && enterElapsed > SLOW_RESPONSE_MS ? '운동 기록 준비 중 · 서버 응답을 기다리고 있어요' : '운동 기록 준비 중',
+      isDone: !!sessionId && enterElapsed > ENTER_STEP_MS * 5,
+    },
   ]
   const isEnterReady = enterSteps.every((s) => s.isDone)
   useEffect(() => {
@@ -144,10 +154,24 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
     return () => clearTimeout(t)
   }, [phase, isEnterReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const startSession = () => {
+    setHasStartError(false)
+    services.record
+      .startSession({ kind: 'party', routineId: routine.routineId })
+      .then(setSessionId)
+      .catch(() => setHasStartError(true))
+  }
+
   const handleCameraConfirmed = () => {
     room.updateSelf({ status: 'ready' })
     setEnterStartedAt(Date.now())
     setPhase('entering')
+    if (!sessionId) startSession()
+  }
+
+  const handleRetryStart = () => {
+    setEnterStartedAt(Date.now())
+    startSession()
   }
 
   const handleNext = () => {
@@ -169,10 +193,13 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
   }
 
   const finish = async () => {
+    if (!sessionId) return
     setIsSaving(true)
+    setHasSaveError(false)
+    const slowTimer = setTimeout(() => setIsSaveSlow(true), SLOW_RESPONSE_MS)
     const result = workout.finalize()
     const session: WorkoutSession = {
-      sessionId: crypto.randomUUID(),
+      sessionId,
       kind: 'party',
       userId: profile.userId,
       roomId: DEMO_ROOM_ID,
@@ -193,6 +220,9 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
       setIsSaving(false)
       setHasSaveError(true)
       setIsEndConfirmOpen(true) // 오류 문구와 재시도 버튼이 이 창에 있다
+    } finally {
+      clearTimeout(slowTimer)
+      setIsSaveSlow(false)
     }
   }
 
@@ -220,6 +250,18 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
   if (!item || !record) return null
 
   if (phase === 'camera') return <CameraCheck camera={camera} theme="friend" onBack={() => setPhase('lobby')} onConfirm={handleCameraConfirmed} />
+  if (phase === 'entering' && hasStartError) {
+    return (
+      <CenterMessage
+        title="운동 기록을 시작하지 못했어요"
+        desc="서버에 연결되지 않거나 응답이 늦어요. 잠시 뒤 다시 시도해 주세요."
+        action={<>
+          <button className="btn btn-secondary" onClick={() => { setHasStartError(false); setPhase('lobby') }}>대기실로</button>
+          <button className="btn btn-primary" onClick={handleRetryStart}>다시 시도</button>
+        </>}
+      />
+    )
+  }
   if (phase === 'entering') return <EnterLoading theme="friend" steps={enterSteps} />
 
   const others = room.participants.filter((p) => p.userId !== profile.userId)
@@ -280,7 +322,9 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
                 { label: '예상 시간', value: `${estimateMinutes(routine.items)}분` },
                 { label: '예상 칼로리', value: `${estimateKcal(routine.items)}kcal` },
               ]}
-              note={<ProvisionalBadge />}
+              note={routine.isFallback
+                ? <ProvisionalBadge>서버 추천 실패 · 임시 규칙 루틴 (기록은 이 기기에만 저장)</ProvisionalBadge>
+                : <ProvisionalBadge />}
               action={
                 <button className="btn btn-brown" style={{ minWidth: 168, height: 56, fontSize: 20, justifyContent: 'space-between' }} onClick={() => setPhase('camera')}>
                   시작하기<span aria-hidden>&gt;</span>
@@ -366,7 +410,7 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
 
       {isEndConfirmOpen && (
         <EndConfirmDialog
-          desc="지금까지 측정된 결과가 저장되고, 결과 화면으로 이동해요."
+          desc={isSaveSlow ? '서버 응답이 늦어지고 있어요. 저장이 끝나면 결과 화면으로 이동해요.' : '지금까지 측정된 결과가 저장되고, 결과 화면으로 이동해요.'}
           hasSaveError={hasSaveError}
           isSaving={isSaving}
           onCancel={() => setIsEndConfirmOpen(false)}
@@ -376,7 +420,10 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
 
       {blocker.state === 'blocked' && <LeaveDialog onStay={() => blocker.reset()} onLeave={() => blocker.proceed()} />}
 
-      {(room.cheerToast || toast.message) && <div className="toast" role="status">{room.cheerToast ?? toast.message}</div>}
+      {isSaving && !isEndConfirmOpen && (
+        <div className="toast" role="status">{isSaveSlow ? '서버 응답이 늦어지고 있어요. 기록을 저장하는 중이니 잠시만 기다려 주세요…' : '기록을 저장하는 중…'}</div>
+      )}
+      {!isSaving && (room.cheerToast || toast.message) && <div className="toast" role="status">{room.cheerToast ?? toast.message}</div>}
     </Scene>
   )
 }

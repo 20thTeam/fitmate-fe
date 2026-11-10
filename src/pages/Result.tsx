@@ -78,16 +78,19 @@ export default function Result() {
                 const isTimed = !!it?.targetSeconds
                 const done = isTimed ? r.validSeconds : r.validReps
                 const goal = it ? (isTimed ? (it.targetSeconds ?? 0) : (it.targetReps ?? 0)) * it.sets : 0
+                // 자세 인식이 안 된 운동은 0회로 보이지 않게 '측정 못 함'으로 둔다
+                const isNotMeasured = r.measurementStatus === 'NOT_MEASURED'
                 return (
                   <li key={r.exerciseId} className="col" style={{ gap: 8, padding: '12px 0' }}>
                     <div className="row between">
                       <strong style={{ fontSize: 20 }}>{r.name}</strong>
                       <span className="t-soft" style={{ fontWeight: 700 }}>
-                        {done}{isTimed ? '초' : '회'}{it ? ` / ${shortAmountLabel(it)}` : ''}
+                        {isNotMeasured ? '측정 못 함' : `${done}${isTimed ? '초' : '회'}`}{it ? ` / ${shortAmountLabel(it)}` : ''}
                         {r.completed && <span className="t-xs" style={{ color: 'var(--c-accent-text)', marginLeft: 6 }}>목표 달성!</span>}
                       </span>
                     </div>
-                    <ProgressBar value={goal ? done / goal : r.completed ? 1 : 0} />
+                    <ProgressBar value={isNotMeasured ? 0 : goal ? done / goal : r.completed ? 1 : 0} />
+                    {isNotMeasured && <span className="t-xs t-soft">카메라나 자세 인식이 안 돼 횟수를 기록하지 않았어요.</span>}
                   </li>
                 )
               })}
