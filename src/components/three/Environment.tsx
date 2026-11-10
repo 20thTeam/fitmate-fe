@@ -2,13 +2,61 @@
 // 구도는 Figma 1:5(추천 루틴 확인·친구) 정면 시안에 맞췄다: 스크린이 무대 뒤 가장자리에 붙고,
 // 무대가 화면 아래를 채우며 좌우로 넘어가고, 무대 뒤로 덤불·바위, 양끝에 나무가 살짝 보인다.
 import { useMemo, useRef } from 'react'
-import { BackSide, MirroredRepeatWrapping, SRGBColorSpace, type Object3D } from 'three'
-import { RoundedBox, useTexture } from '@react-three/drei'
+import { BackSide, Box3, Color, MirroredRepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type Object3D } from 'three'
+import { RoundedBox, useGLTF, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { RoomPalette } from './palette'
 import { SCREEN_CENTER, SCREEN_H, SCREEN_W } from './layout'
-import { foliageGeometry, type Blob } from './foliage'
 import type { Theme } from '../Backdrop'
+// 나무·덤불·바위 모델: Quaternius "Stylized Nature MegaKit" (CC0). 원본에서 노멀맵을 빼고 그림을 512px로 줄였다
+import tree1Model from '../../assets/props/CommonTree_1.glb?url'
+import tree2Model from '../../assets/props/CommonTree_3.glb?url'
+import bush1Model from '../../assets/props/Bush_Common.glb?url'
+import bush2Model from '../../assets/props/Bush_Common_Flowers.glb?url'
+import rock1Model from '../../assets/props/Rock_Medium_1.glb?url'
+import rock2Model from '../../assets/props/Rock_Medium_3.glb?url'
+
+const PROP_MODELS = { tree: [tree1Model, tree2Model], bush: [bush1Model, bush2Model], rock: [rock1Model, rock2Model] }
+type PropKind = keyof typeof PROP_MODELS
+/** 모델 원래 색이 노을 배경보다 차가워서 따뜻한 분홍빛을 곱한다 */
+const PROP_TINT = new Color('#ffcdbd')
+const TINTED = 'isSunsetTinted'
+
+/** 모델을 원하는 높이로 맞추고 바닥을 position.y에 붙여 세운다. 같은 종류가 똑같아 보이지 않게 위치로 모양·방향을 고른다 */
+function ModelProp({ kind, position, height, cullRadius }: { kind: PropKind; position: [number, number, number]; height: number; cullRadius: number }) {
+  const seed = Math.abs(Math.round(position[0] * 7 + position[2] * 13))
+  const urls = PROP_MODELS[kind]
+  const { scene } = useGLTF(urls[seed % urls.length], false, false)
+  const model = useMemo(() => {
+    const root = scene.clone()
+    root.traverse((o) => {
+      const mesh = o as Mesh
+      if (!mesh.isMesh) return
+      mesh.castShadow = true
+      mesh.receiveShadow = kind === 'rock'
+      // 재질은 복제본끼리 같이 쓰니 색은 한 번만 입힌다
+      const m = mesh.material as MeshStandardMaterial
+      if (!m.userData[TINTED]) {
+        m.color.multiply(PROP_TINT)
+        // 그늘진 면이 배경보다 어둡게 가라앉지 않도록 제 색으로 살짝 밝힌다
+        m.emissiveMap = m.map
+        m.emissive.copy(PROP_TINT)
+        m.emissiveIntensity = 0.3
+        m.userData[TINTED] = true
+      }
+    })
+    const box = new Box3().setFromObject(root)
+    const k = height / Math.max(box.max.y - box.min.y, 0.001)
+    root.scale.setScalar(k)
+    root.position.y = -box.min.y * k
+    return root
+  }, [scene, height, kind])
+  return (
+    <group position={position} rotation={[0, seed * 1.7, 0]} name={PROP_NAME} userData={{ cullRadius }}>
+      <primitive object={model} />
+    </group>
+  )
+}
 
 const GROUND_Y = -0.6
 
@@ -61,126 +109,23 @@ function Lamp({ position, palette }: { position: [number, number, number]; palet
   )
 }
 
-// Figma 배경 그림의 나무: 굵은 분홍 줄기가 두 갈래로 갈라지고, 큰 잎 덩어리 4~5개가 겹친다
-const TREE_BLOBS: Blob[] = [
-  [-0.45, 3.55, 0, 1.25],
-  [0.95, 3.15, 0.15, 1.05],
-  [-1.15, 2.65, 0.35, 0.95],
-  [0.25, 4.25, -0.45, 0.95],
-  [0.25, 2.75, 0.85, 0.8],
-]
-// 줄기에서 갈라지는 가지: 시작점, 끝점, 굵기
-const TREE_BRANCHES: [[number, number], [number, number], number][] = [
-  [[0, 1.5], [-0.95, 2.55], 0.13],
-  [[0.05, 1.7], [0.85, 2.6], 0.11],
-]
-
-function Branch({ from, to, radius, color }: { from: [number, number]; to: [number, number]; radius: number; color: string }) {
-  const dx = to[0] - from[0]
-  const dy = to[1] - from[1]
-  const length = Math.hypot(dx, dy)
-  return (
-    <mesh position={[(from[0] + to[0]) / 2, (from[1] + to[1]) / 2, 0]} rotation={[0, 0, -Math.atan2(dx, dy)]} castShadow>
-      <cylinderGeometry args={[radius * 0.75, radius, length, 10]} />
-      <meshStandardMaterial color={color} roughness={0.85} />
-    </mesh>
-  )
+interface PropProps {
+  /** 바닥에 닿는 자리 */
+  position: [number, number, number]
+  scale?: number
 }
 
-function Tree({ position, scale = 1, palette }: { position: [number, number, number]; scale?: number; palette: RoomPalette }) {
-  const leaves = foliageGeometry('tree', TREE_BLOBS, palette.foliage)
-  return (
-    <group position={position} scale={scale} name={PROP_NAME} userData={{ cullRadius: 2.6 * scale }}>
-      <mesh position={[0, 1.2, 0]} castShadow>
-        <cylinderGeometry args={[0.24, 0.36, 2.4, 12]} />
-        <meshStandardMaterial color={palette.trunk} roughness={0.85} />
-      </mesh>
-      {TREE_BRANCHES.map(([from, to, r], i) => (
-        <Branch key={i} from={from} to={to} radius={r} color={palette.trunk} />
-      ))}
-      <mesh geometry={leaves} castShadow>
-        <meshStandardMaterial vertexColors roughness={1} emissive={palette.foliage.light} emissiveIntensity={0.16} />
-      </mesh>
-    </group>
-  )
+function Tree({ position, scale = 1 }: PropProps) {
+  return <ModelProp kind="tree" position={position} height={5.2 * scale} cullRadius={2.6 * scale} />
 }
 
-// 공개방(바다)은 야자수. 줄기는 마디를 조금씩 휘게 쌓고, 잎은 끝이 처지는 길쭉한 잎 7장.
-const PALM_SEGMENTS = Array.from({ length: 6 }, (_, i) => ({ x: 0.035 * i * i, y: 0.45 + i * 0.85 }))
-const PALM_TOP = { x: 0.035 * 25 + 0.1, y: 0.45 + 5 * 0.85 + 0.45 }
-const PALM_LEAVES = Array.from({ length: 7 }, (_, i) => (i / 7) * Math.PI * 2 + 0.3)
-// 잎 한 장은 두 마디로 꺾어 끝이 아래로 처지게 한다
-const PALM_LEAF_PARTS: { offset: number; tilt: number; len: number }[] = [
-  { offset: 0.75, tilt: 0.15, len: 0.8 },
-  { offset: 1.95, tilt: 0.75, len: 0.75 },
-]
-
-function Palm({ position, isMirrored = false, palette }: { position: [number, number, number]; isMirrored?: boolean; palette: RoomPalette }) {
-  const crown = foliageGeometry('palm-crown', [[PALM_TOP.x, PALM_TOP.y - 0.1, 0, 0.42]], palette.foliage)
-  return (
-    <group position={position} scale={[isMirrored ? -1 : 1, 1, 1]} name={PROP_NAME} userData={{ cullRadius: 3 }}>
-      {PALM_SEGMENTS.map((s, i) => (
-        <mesh key={i} position={[s.x, s.y, 0]} rotation={[0, 0, -0.06 * i]} castShadow>
-          <cylinderGeometry args={[0.15 - i * 0.01, 0.21 - i * 0.012, 0.9, 10]} />
-          <meshStandardMaterial color={i % 2 ? palette.trunk : '#c99a6c'} roughness={0.9} />
-        </mesh>
-      ))}
-      <mesh geometry={crown} castShadow>
-        <meshStandardMaterial vertexColors roughness={1} />
-      </mesh>
-      {PALM_LEAVES.map((a, i) => (
-        <group key={i} position={[PALM_TOP.x, PALM_TOP.y, 0]} rotation={[0, -a, 0]}>
-          {PALM_LEAF_PARTS.map((part, j) => (
-            <mesh
-              key={j}
-              position={[part.offset, -0.15 - j * 0.45, 0]}
-              rotation={[0, 0, -part.tilt]}
-              scale={[part.len, 0.06, 0.32 - j * 0.08]}
-              castShadow
-            >
-              <sphereGeometry args={[1, 16, 8]} />
-              <meshStandardMaterial color={j === 0 ? palette.foliage.base : palette.foliage.light} roughness={0.9} />
-            </mesh>
-          ))}
-        </group>
-      ))}
-    </group>
-  )
+/** 바닥에 살짝 묻어 얹힌 느낌을 준다 */
+function Rock({ position, scale = 1 }: PropProps) {
+  return <ModelProp kind="rock" position={[position[0], position[1] - 0.08 * scale, position[2]]} height={1.3 * scale} cullRadius={1.4 * scale} />
 }
 
-/** 둥글고 각진 바위 (그림의 연보라 바위) */
-function Rock({ position, scale = 1, palette }: { position: [number, number, number]; scale?: number; palette: RoomPalette }) {
-  return (
-    <mesh position={position} scale={[1.35 * scale, 0.8 * scale, scale]} rotation={[0.1, 0.6, 0]} castShadow receiveShadow name={PROP_NAME} userData={{ cullRadius: 1.4 * scale }}>
-      <icosahedronGeometry args={[0.75, 1]} />
-      <meshStandardMaterial color={palette.rock} roughness={0.7} flatShading emissive={palette.rock} emissiveIntensity={0.12} />
-    </mesh>
-  )
-}
-
-const BUSH_BLOBS: Blob[] = [
-  [0, 0.5, 0, 0.72],
-  [0.75, 0.38, 0.15, 0.55],
-  [-0.72, 0.36, 0.1, 0.52],
-  [0.25, 0.85, -0.2, 0.5],
-  [-0.25, 0.3, 0.5, 0.42],
-]
-
-function Bush({ position, scale = 1, palette, hasFlowers = false }: { position: [number, number, number]; scale?: number; palette: RoomPalette; hasFlowers?: boolean }) {
-  const leaves = foliageGeometry('bush', BUSH_BLOBS, palette.foliage)
-  return (
-    <group position={position} scale={scale} name={PROP_NAME} userData={{ cullRadius: 1.6 * scale }}>
-      <mesh geometry={leaves} castShadow>
-        <meshStandardMaterial vertexColors roughness={1} emissive={palette.foliage.light} emissiveIntensity={0.16} />
-      </mesh>
-      {hasFlowers && [[-0.3, 0.8, 0.45], [0.5, 0.65, 0.5], [0.05, 1.05, 0.3]].map((p, i) => (
-        <mesh key={i} position={p as [number, number, number]}>
-          <sphereGeometry args={[0.12, 10, 8]} />
-          <meshStandardMaterial color={i === 1 ? '#fff4c2' : '#f59ab5'} roughness={0.7} />
-        </mesh>
-      ))}
-    </group>
-  )
+function Bush({ position, scale = 1 }: PropProps) {
+  return <ModelProp kind="bush" position={position} height={1.35 * scale} cullRadius={1.6 * scale} />
 }
 
 /** 스크린 틀과 빈 판. 안의 내용은 Room3D가 DOM으로 겹친다. */
@@ -233,7 +178,7 @@ const jitter = (n: number) => {
   return v - Math.floor(v)
 }
 
-type Prop = { kind: 'tree' | 'bush' | 'rock'; x: number; z: number; scale: number }
+type Prop = { kind: PropKind; x: number; z: number; scale: number }
 
 const RING_PROPS: Prop[] = (() => {
   const props: Prop[] = []
@@ -254,18 +199,12 @@ const RING_PROPS: Prop[] = (() => {
   return props
 })()
 
-function RingProps({ isFriend, palette }: { isFriend: boolean; palette: RoomPalette }) {
+function RingProps() {
   return (
     <>
       {RING_PROPS.map((p, i) => {
-        const position: [number, number, number] = [p.x, GROUND_Y, p.z]
-        if (p.kind === 'tree') {
-          return isFriend
-            ? <Tree key={i} position={position} scale={p.scale} palette={palette} />
-            : <Palm key={i} position={position} isMirrored={p.x < 0} palette={palette} />
-        }
-        if (p.kind === 'rock') return <Rock key={i} position={[p.x, GROUND_Y + 0.3, p.z]} scale={p.scale} palette={palette} />
-        return <Bush key={i} position={position} scale={p.scale} palette={palette} hasFlowers={!isFriend} />
+        const Item = p.kind === 'tree' ? Tree : p.kind === 'rock' ? Rock : Bush
+        return <Item key={i} position={[p.x, GROUND_Y, p.z]} scale={p.scale} />
       })}
     </>
   )
@@ -314,33 +253,28 @@ export default function Environment({ theme, palette }: { theme: Theme; palette:
 
       <Screen palette={palette} />
 
-      <Lamp position={[-6.4, 0, -2.3]} palette={palette} />
-      <Lamp position={[6.4, 0, -2.3]} palette={palette} />
-
-      {BACK_BUSHES.map(([x, z, k]) => (
-        <Bush key={x} position={[x, GROUND_Y, z]} scale={k * 0.8} palette={palette} hasFlowers={!isFriend} />
-      ))}
-
-      {isFriend ? (
+      {isFriend && (
         <>
-          <Tree position={[-11, GROUND_Y, -6.2]} scale={1.55} palette={palette} />
-          <Tree position={[11.2, GROUND_Y, -6.4]} scale={1.5} palette={palette} />
-          <Tree position={[-17, GROUND_Y, -11]} scale={1.5} palette={palette} />
-          <Tree position={[17.5, GROUND_Y, -11.5]} scale={1.45} palette={palette} />
-        </>
-      ) : (
-        <>
-          <Palm position={[-10.4, GROUND_Y, -5.6]} isMirrored palette={palette} />
-          <Palm position={[10.6, GROUND_Y, -5.8]} palette={palette} />
+          <Lamp position={[-6.4, 0, -2.3]} palette={palette} />
+          <Lamp position={[6.4, 0, -2.3]} palette={palette} />
+
+          {BACK_BUSHES.map(([x, z, k]) => (
+            <Bush key={x} position={[x, GROUND_Y, z]} scale={k * 0.8} />
+          ))}
+
+          <Tree position={[-11, GROUND_Y, -6.2]} scale={1.55} />
+          <Tree position={[11.2, GROUND_Y, -6.4]} scale={1.5} />
+          <Tree position={[-17, GROUND_Y, -11]} scale={1.5} />
+          <Tree position={[17.5, GROUND_Y, -11.5]} scale={1.45} />
+
+          <Rock position={[-8.4, GROUND_Y, -4.4]} scale={1.1} />
+          <Rock position={[10.6, GROUND_Y, -4.5]} scale={1.2} />
+          <Rock position={[-15.5, GROUND_Y, -4.8]} scale={1.3} />
+
+          <RingProps />
+          <NearPropCuller />
         </>
       )}
-
-      <Rock position={[-8.4, -0.1, -4.4]} scale={1.1} palette={palette} />
-      <Rock position={[10.6, -0.1, -4.5]} scale={1.2} palette={palette} />
-      <Rock position={[-15.5, -0.1, -4.8]} scale={1.3} palette={palette} />
-
-      <RingProps isFriend={isFriend} palette={palette} />
-      <NearPropCuller />
     </>
   )
 }

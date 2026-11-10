@@ -10,6 +10,7 @@ import type {
   PoseFrame,
   Profile,
   Routine,
+  SessionKind,
   TeamProgress,
   WorkoutSession,
 } from '../types/domain'
@@ -29,7 +30,15 @@ export interface RoutineService {
 }
 
 export interface RecordService {
-  /** sessionId 기준으로 중복 저장하지 않는다 */
+  /**
+   * 운동을 시작하며 기록 ID(sessionId)를 받는다.
+   * 같은 루틴으로 진행 중인 기록이 있으면 같은 ID를 돌려준다 (재접속 시 이어 하기).
+   */
+  startSession(input: { kind: SessionKind; routineId: string | null }): Promise<string>
+  /**
+   * startSession으로 받은 sessionId로 기록을 확정한다.
+   * sessionId 기준으로 중복 저장하지 않고, 이미 확정된 기록이면 성공으로 본다.
+   */
   saveSession(session: WorkoutSession): Promise<void>
   getSession(sessionId: string): Promise<WorkoutSession | null>
   /** 본인 기록만 반환 (F-YBENHN) */

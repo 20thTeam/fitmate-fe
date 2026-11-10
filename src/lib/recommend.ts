@@ -20,7 +20,8 @@ export function buildFirstRoutine(userId: string, goal: GoalId): Routine {
 /** 운동 1개의 목표 대비 유효 수행 비율. 판정 근거가 없으면 null. */
 function ratioOf(item: RoutineItem, session: WorkoutSession): number | null {
   const rec = session.records.find((r) => r.exerciseId === item.exerciseId)
-  if (!rec) return null
+  // 측정 못 한 운동의 0회는 실제 수행량이 아니다 (PL-SOBVBH: 근거 없으면 유지)
+  if (!rec || rec.measurementStatus === 'NOT_MEASURED') return null
   if (item.targetReps) return rec.validReps / (item.targetReps * item.sets)
   if (item.targetSeconds) return rec.validSeconds / (item.targetSeconds * item.sets)
   return null

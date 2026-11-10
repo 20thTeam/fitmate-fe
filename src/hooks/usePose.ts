@@ -11,6 +11,7 @@ import wasmBinaryPath from '@mediapipe/tasks-vision/vision_wasm_internal.wasm?ur
 // 원본: storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1
 import modelUrl from '../assets/models/pose_landmarker_lite.task?url'
 import type { Lm } from '../lib/pose/landmarks'
+import { clearLivePose, writeLivePose } from '../lib/pose/livePose'
 import type { PoseInput } from '../lib/pose/repCounter'
 /** 이만큼 연속으로 못 찾으면 '놓침'으로 바꾼다 (잠깐 가려지는 건 무시) */
 const LOST_AFTER_FRAMES = 12
@@ -136,6 +137,8 @@ export function usePose({ stream, shouldLoad, isActive, onFrame, canvasRef }: Op
           input.aspect = video.videoHeight ? video.videoWidth / video.videoHeight : 4 / 3
           input.t = t
           isOk = onFrameRef.current(input)
+          // 운동방의 내 3D 캐릭터가 이 좌표로 움직인다
+          writeLivePose(world, t)
         }
         draw(image, isOk)
       } catch {
@@ -162,6 +165,7 @@ export function usePose({ stream, shouldLoad, isActive, onFrame, canvasRef }: Op
 
     return () => {
       ctl.abort()
+      clearLivePose()
       video.pause()
       video.srcObject = null
       setIsTracking(false)

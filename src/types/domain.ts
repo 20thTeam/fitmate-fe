@@ -46,12 +46,19 @@ export interface Routine {
   changeReasons?: string[]
   /** 시연용 임시 규칙으로 만들어졌는지. true면 화면에 임시 표시를 한다. */
   provisional: boolean
+  /** 서버 추천을 받지 못해 규칙 기반 추천(lib/recommend)으로 대신 만들었는지. 이 루틴의 기록은 서버에 저장되지 않는다. */
+  isFallback?: boolean
 }
+
+/** 운동 1개를 카메라·자세 인식으로 실제 측정했는지 (BE 수행 기록 형식과 같은 값) */
+export type MeasurementStatus = 'MEASURED' | 'NOT_MEASURED'
 
 /** 운동 1개의 실제 수행 기록 (F-XNIIJM dataSpec). */
 export interface ExerciseRecord {
   exerciseId: string
   name: string
+  /** 자세 인식이 한 번도 안 된 운동은 NOT_MEASURED. 이때 횟수·시간은 0이어도 기록으로 보여주지 않는다. 예전 기록에는 없다. */
+  measurementStatus?: MeasurementStatus
   validReps: number
   validSeconds: number
   /** 실제 운동한 시간 (일시정지 제외) */

@@ -18,6 +18,8 @@ type PostureNote = ExerciseRecord['postureNotes'][number]
 const emptyRecord = (it: WorkoutItem): ExerciseRecord => ({
   exerciseId: it.exerciseId,
   name: it.name,
+  // 자세 인식이 한 번이라도 되면 MEASURED로 바꾼다 (markMeasured)
+  measurementStatus: 'NOT_MEASURED',
   validReps: 0,
   validSeconds: 0,
   durationMs: 0,
@@ -73,15 +75,22 @@ export function useWorkout(items: WorkoutItem[]) {
 
   const isRunning = clock.runningSince !== null
 
+  /** 지금 운동을 자세 인식으로 측정하고 있다고 표시한다. 인식이 처음 잡힐 때만 부른다 (매 프레임 아님). */
+  const markMeasured = useCallback(() => {
+    if (latest.current.records[latest.current.index]?.measurementStatus === 'MEASURED') return
+    updateRecord(latest.current.index, (r) => ({ ...r, measurementStatus: 'MEASURED' }))
+  }, [updateRecord])
+
+  // 횟수·시간이 인정됐다는 건 측정이 됐다는 뜻이다
   const countValidRep = useCallback((n = 1) => {
     if (latest.current.clock.runningSince === null) return
-    updateRecord(latest.current.index, (r) => ({ ...r, validReps: r.validReps + n }))
+    updateRecord(latest.current.index, (r) => ({ ...r, measurementStatus: 'MEASURED', validReps: r.validReps + n }))
     setSetProgress((p) => p + n)
   }, [updateRecord])
 
   const countValidSeconds = useCallback((n = 1) => {
     if (latest.current.clock.runningSince === null) return
-    updateRecord(latest.current.index, (r) => ({ ...r, validSeconds: r.validSeconds + n }))
+    updateRecord(latest.current.index, (r) => ({ ...r, measurementStatus: 'MEASURED', validSeconds: r.validSeconds + n }))
     setSetProgress((p) => p + n)
   }, [updateRecord])
 
@@ -134,6 +143,7 @@ export function useWorkout(items: WorkoutItem[]) {
     pause,
     countValidRep,
     countValidSeconds,
+    markMeasured,
     addPostureNote,
     nextSet,
     endExercise,

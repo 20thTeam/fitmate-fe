@@ -55,6 +55,9 @@ const routine: RoutineService = {
 const readSessions = () => readJson<WorkoutSession[]>(KEY.sessions, [])
 
 const record: RecordService = {
+  async startSession() {
+    return uid()
+  },
   async saveSession(s) {
     const all = readSessions()
     if (!all.some((x) => x.sessionId === s.sessionId)) all.push(s)

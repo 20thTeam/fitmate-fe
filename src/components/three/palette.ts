@@ -2,7 +2,6 @@
 import sunsetBg from '../../assets/bg/sunset.jpg'
 import oceanBg from '../../assets/bg/ocean-blur.jpg'
 import type { Theme } from '../Backdrop'
-import type { FoliageColors } from './foliage'
 
 export interface RoomPalette {
   /** 뒤쪽 둥근 벽에 입히는 배경 그림 */
@@ -18,9 +17,6 @@ export interface RoomPalette {
   panel: string
   lampPost: string
   lampGlow: string
-  foliage: FoliageColors
-  trunk: string
-  rock: string
   hemiSky: string
   hemiGround: string
   sun: string
@@ -38,9 +34,6 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     panel: '#f6cdea',
     lampPost: '#5b3a56',
     lampGlow: '#fff4dc',
-    foliage: { shade: '#b08e86', base: '#b5bc63', light: '#e3e596' },
-    trunk: '#e2907e',
-    rock: '#dcbde3',
     hemiSky: '#ffe6ee',
     hemiGround: '#d9a3b8',
     sun: '#ffe6cf',
@@ -56,9 +49,6 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     panel: '#f6ecfa',
     lampPost: '#3a3340',
     lampGlow: '#fffbe8',
-    foliage: { shade: '#3f7f45', base: '#5fae4c', light: '#a6dc78' },
-    trunk: '#b8875a',
-    rock: '#ece6ef',
     hemiSky: '#e4f2ff',
     hemiGround: '#c6b6d6',
     sun: '#fff6e6',
