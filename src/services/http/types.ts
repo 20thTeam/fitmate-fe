@@ -114,6 +114,45 @@ export interface WorkoutResultResponse {
   teamXp: TeamXpChangeResponse
 }
 
+/** 내 성장 기록 (GET /api/participants/me/history). 종료한 운동만, 최근 종료 순 */
+export interface HistoryWorkoutResponse {
+  workoutId: number
+  routineId: number
+  roundNo: number
+  goal: ApiGoal
+  goalName: string
+  /** 시간대 없는 서버 시각 (KST) */
+  startedAt: string
+  finishedAt: string
+  /** 시작~종료 시간(초). 쉬는 시간 포함 */
+  elapsedSeconds: number
+  /** 운동별 실제 소요 시간 합(초). 보낸 값이 없으면 null */
+  exerciseSeconds: number | null
+  /** 측정된 운동의 유효 횟수 합. 측정된 횟수형 운동이 없으면 null(0이 아님) */
+  totalValidCount: number | null
+  adjustmentType: 'UP' | 'KEEP' | 'UNAVAILABLE' | null
+  adjustmentReasons: string[]
+  earnedXp: number | null
+  records: ExerciseRecordResponse[]
+  nextRoutine: {
+    routineId: number
+    roundNo: number
+    adjustmentType: 'UP' | 'KEEP' | 'UNAVAILABLE'
+    adjustmentReasons: string[]
+  } | null
+}
+
+export interface HistoryResponse {
+  summary: {
+    workoutCount: number
+    totalElapsedSeconds: number
+    totalExerciseSeconds: number | null
+    totalValidCount: number | null
+    totalEarnedXp: number | null
+  }
+  workouts: HistoryWorkoutResponse[]
+}
+
 export interface TeamXpResponse {
   teamId: number
   teamName: string
