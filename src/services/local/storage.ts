@@ -22,4 +22,16 @@ export function writeJson(key: string, value: unknown): void {
   }
 }
 
+/** 이 앱이 이 브라우저에 보관한 값(fitmate.*)을 모두 지운다 */
+export function clearAll(): void {
+  memory.clear()
+  try {
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('fitmate.'))
+      .forEach((k) => localStorage.removeItem(k))
+  } catch {
+    /* 저장소가 막혀 있으면 메모리만 비운다 */
+  }
+}
+
 export const uid = () => crypto.randomUUID()
