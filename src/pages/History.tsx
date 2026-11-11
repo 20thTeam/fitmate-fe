@@ -4,7 +4,7 @@ import { services } from '../services'
 import { useApp } from '../store/app'
 import { goalLabel, type WorkoutSession } from '../types/domain'
 import { durationLabel, relativeDay } from '../lib/format'
-import { summarize, totalValidReps } from '../lib/stats'
+import { hasMeasuredRecord, summarize, totalValidReps } from '../lib/stats'
 import Backdrop from '../components/Backdrop'
 import { CenterMessage, Logo, StatCard } from '../components/ui'
 
@@ -30,7 +30,9 @@ const roundLabel = (s: WorkoutSession) => (s.kind === 'sunset' ? '공개' : `${s
 const COLUMNS = '0.7fr 1.4fr 1fr 1fr 1fr 1fr'
 
 function RepsChart({ sessions }: { sessions: WorkoutSession[] }) {
-  const data = [...sessions].sort((a, b) => a.endedAt - b.endedAt).slice(-8)
+  // 측정 못 한 회차는 0으로 찍지 않고 그래프에서 뺀다 (측정하지 않은 값을 기록처럼 보여주지 않음)
+  const data = sessions.filter(hasMeasuredRecord).sort((a, b) => a.endedAt - b.endedAt).slice(-8)
+  if (data.length === 0) return <p className="t-soft" style={{ padding: '28px 0', textAlign: 'center' }}>아직 측정된 회차가 없어요. 카메라로 동작이 인식되면 여기에 쌓여요.</p>
   const max = Math.max(1, ...data.map(totalValidReps))
   const W = 1200
   const H = 150
@@ -108,7 +110,7 @@ export default function History() {
           <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}>
               <StatCard label="총 운동 시간" value={durationLabel(stats.totalActiveMs)} />
-              <StatCard label="누적 운동 횟수" value={`${stats.totalReps.toLocaleString()}회`} />
+              <StatCard label="누적 운동 횟수" value={stats.hasMeasuredReps ? `${stats.totalReps.toLocaleString()}회` : '측정 기록 없음'} />
               <StatCard label="연속 운동일" value={`${stats.streakDays}일째`} />
             </div>
 
@@ -132,7 +134,7 @@ export default function History() {
                         <span role="cell">{roundLabel(s)}</span>
                         <span role="cell">{s.goal ? goalLabel(s.goal) : '선셋 에어로빅'}</span>
                         <span role="cell">{durationLabel(s.activeMs)}</span>
-                        <span role="cell">{totalValidReps(s)}회</span>
+                        <span role="cell">{hasMeasuredRecord(s) ? `${totalValidReps(s)}회` : <span className="t-muted">측정 못 함</span>}</span>
                         <span role="cell">{fb ? <span className={`chip chip-${fb.tone}`} style={{ fontSize: 10 }}>{fb.label}</span> : <span className="t-muted">-</span>}</span>
                         <span role="cell">{relativeDay(s.endedAt)}</span>
                       </button>

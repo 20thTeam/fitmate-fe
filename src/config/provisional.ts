@@ -102,8 +102,8 @@ export const PROVISIONAL_ESTIMATE = {
   kcalPerMinute: 5,
 }
 
-/** 미정: 회차별 난이도 이름. 난이도 기준이 정해지면 루틴 응답 값으로 바꾼다. */
-export const provisionalDifficulty = (round: number) => (round <= 1 ? '쉬움' : round === 2 ? '보통' : '도전')
+/** 미정: 난이도 이름. 목표량을 올린 횟수로 정한다. 난이도 기준이 정해지면 루틴 응답 값으로 바꾼다. */
+export const provisionalDifficulty = (difficultyStep = 0) => (difficultyStep <= 0 ? '쉬움' : difficultyStep === 1 ? '보통' : '도전')
 
 /**
  * 미정: 운동방 가운데 스크린에 틀 따라하기 영상(YouTube 영상 ID).
