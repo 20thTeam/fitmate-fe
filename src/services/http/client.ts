@@ -8,6 +8,9 @@ const DEFAULT_TIMEOUT_MS = 8000
 
 export const hasApiUrl = BASE_URL !== ''
 
+/** 운동방 실시간 연결 주소. 따로 없으면 API 주소의 /ws (https → wss) */
+export const WS_URL = import.meta.env.VITE_WS_URL || (hasApiUrl ? `${BASE_URL.replace(/^http/, 'ws')}/ws` : '')
+
 export type ApiErrorKind = 'timeout' | 'network' | 'http'
 
 export class ApiError extends Error {

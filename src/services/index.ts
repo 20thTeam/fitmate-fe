@@ -1,7 +1,7 @@
 // 어떤 백엔드 구현을 쓸지 고르는 단일 지점.
 // .env 의 VITE_BACKEND=local | http  (기본 local)
 //   - local : 브라우저 안에서만 동작 (localStorage + BroadcastChannel)
-//   - http  : 팀 백엔드(VITE_API_URL). 실시간 운동방은 아직 로컬을 쓴다.
+//   - http  : 팀 백엔드(VITE_API_URL). 친구 운동방 실시간 연결은 서버 웹소켓(VITE_WS_URL 또는 <API>/ws)을 쓴다.
 
 import { localServices } from './local'
 import { httpServices } from './http'
