@@ -317,7 +317,7 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
               thumb={ROUTINE_THUMB}
               caption={`오늘의 운동 · ${routine.round}회차`}
               title={goalLabel(routine.goal)}
-              chip={<span className="chip chip-easy">{provisionalDifficulty(routine.round)}</span>}
+              chip={<span className="chip chip-easy">{provisionalDifficulty(routine.difficultyStep)}</span>}
               stats={[
                 { label: '예상 시간', value: `${estimateMinutes(routine.items)}분` },
                 { label: '예상 칼로리', value: `${estimateKcal(routine.items)}kcal` },

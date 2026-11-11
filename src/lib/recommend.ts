@@ -42,6 +42,7 @@ function increase(it: RoutineItem): { next: RoutineItem; reason: string } | null
 /** 수행이 충분하면 안전 상한 안에서 올리고, 부족하거나 근거가 없으면 유지한다 (PL-SOBVBH). */
 export function buildNextRoutine(prev: Routine, session: WorkoutSession): Routine {
   const reasons: string[] = []
+  let isRaised = false
   const items = prev.items.map((it) => {
     const ratio = ratioOf(it, session)
     if (ratio === null) {
@@ -59,6 +60,7 @@ export function buildNextRoutine(prev: Routine, session: WorkoutSession): Routin
       return it
     }
     reasons.push(`${it.name}: 목표의 ${pct}%를 수행해 ${up.reason}`)
+    isRaised = true
     return up.next
   })
 
@@ -71,6 +73,8 @@ export function buildNextRoutine(prev: Routine, session: WorkoutSession): Routin
     prevRoutineId: prev.routineId,
     basedOnSessionId: session.sessionId,
     changeReasons: reasons,
+    // 회차가 늘어도 목표량을 올리지 않았으면 난이도도 그대로다
+    difficultyStep: (prev.difficultyStep ?? 0) + (isRaised ? 1 : 0),
     provisional: true,
   }
 }

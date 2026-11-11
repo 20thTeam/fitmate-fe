@@ -45,6 +45,8 @@ export interface Routine {
   basedOnSessionId?: string
   changeReasons?: string[]
   /** 시연용 임시 규칙으로 만들어졌는지. true면 화면에 임시 표시를 한다. */
+  /** 1회차부터 목표량을 몇 번 올렸는지. 난이도 표시에만 쓰는 화면 값이라 서버 계약에는 없다. 없으면 0 */
+  difficultyStep?: number
   provisional: boolean
   /** 서버 추천을 받지 못해 규칙 기반 추천(lib/recommend)으로 대신 만들었는지. 이 루틴의 기록은 서버에 저장되지 않는다. */
   isFallback?: boolean
