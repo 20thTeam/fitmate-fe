@@ -276,13 +276,13 @@ function NearPropCuller() {
   return null
 }
 
-// 공개방 무대 (Figma 바닷가 무대 시안). 스크린보다 조금 넓은 단상이라 옆 가장자리와 계단이 화면 양끝에 보인다.
+// 공개방 무대 (Figma 바닷가 무대 시안). 여러 명이 서는 단체방이라 화면 폭을 채울 만큼 넓고, 계단은 옆으로 돌려 보면 보인다.
 // 앞쪽은 카메라 밑까지 이어진다. 단상 높이 0.6을 계단 4칸(0.15씩)으로 내려간다.
-const PUBLIC_STAGE_HALF_W = 5.8
+const PUBLIC_STAGE_HALF_W = 9
 const PUBLIC_STAGE_BACK_Z = -4.4
 const PUBLIC_STAGE_FRONT_Z = 21.8
-const STAIR_Z = -2.4
-const STAIR_LEN = 2.6
+const STAIR_Z = -1.6
+const STAIR_LEN = 3.2
 const STEP_RISE = 0.15
 const STEP_RUN = 0.45
 
