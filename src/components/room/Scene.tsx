@@ -2,7 +2,8 @@
 // WebGL을 못 쓰거나 3D가 실패하면 예전 2D 그림 장면으로 보여준다.
 import { lazy, Suspense, type CSSProperties, type ReactNode } from 'react'
 import friendBg from '../../assets/bg/room-friend.jpg'
-import publicBg from '../../assets/bg/room-public.jpg'
+import publicFrontBg from '../../assets/bg/public-room-front.jpg'
+import publicAngleBg from '../../assets/bg/public-room-angle.jpg'
 import type { Participant } from '../../types/domain'
 import type { Theme } from '../Backdrop'
 import type { CameraView } from '../three/Room3D'
@@ -12,8 +13,6 @@ import CharacterFloor from './CharacterFloor'
 
 // three.js는 무거워서 운동방에 들어올 때만 받는다
 const Room3D = lazy(() => import('../three/Room3D'))
-
-const BG: Record<Theme, string> = { friend: friendBg, public: publicBg }
 
 interface Props {
   theme: Theme
@@ -29,26 +28,29 @@ interface Props {
   children: ReactNode
 }
 
-/** 2D 그림 장면 (3D 로딩 중·실패 시) */
-function FlatScene({ theme, screen, participants, selfId, onCheer, maxShown }: Omit<Props, 'children' | 'view'>) {
-  const style = { '--bg-image': `url(${BG[theme]})` } as CSSProperties
+/** 2D 그림 장면 (3D 로딩 중·실패 시). 공개방은 카메라 구도에 맞는 그림을 쓴다 */
+function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer, maxShown }: Omit<Props, 'children'>) {
+  const background = theme === 'public'
+    ? (view === 'front' ? publicFrontBg : publicAngleBg)
+    : friendBg
+  const style = { '--bg-image': `url(${background})` } as CSSProperties
   return (
     <div className="scene-art" style={style}>
-      {screen && <div className="scene-screen" data-variant={theme}>{screen}</div>}
+      {screen && <div className="scene-screen" data-variant={theme} data-view={view}>{screen}</div>}
       {participants && selfId && <CharacterFloor theme={theme} participants={participants} selfId={selfId} maxShown={maxShown} onCheer={onCheer} />}
     </div>
   )
 }
 
 export default function Scene({ theme, screen, participants, selfId, onCheer, maxShown, view = 'tour', children }: Props) {
-  const flat = <FlatScene theme={theme} screen={screen} participants={participants} selfId={selfId} onCheer={onCheer} maxShown={maxShown} />
+  const flat = <FlatScene theme={theme} view={view} screen={screen} participants={participants} selfId={selfId} onCheer={onCheer} maxShown={maxShown} />
   return (
     <main className="scene" data-theme={theme}>
       <div className="scene-stage">
         {canUseWebGL() ? (
           <ThreeBoundary fallback={flat}>
             {/* 3D를 받는 동안에는 같은 구도의 2D 그림을 보여준다 */}
-            <Suspense fallback={<FlatScene theme={theme} />}>
+            <Suspense fallback={<FlatScene theme={theme} view={view} />}>
               <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} />
             </Suspense>
           </ThreeBoundary>

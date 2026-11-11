@@ -1,6 +1,6 @@
-// 3D 운동방 테마별 색. Figma 배경 그림(1:534 선셋, 공개방 바다)에서 뽑았다.
+// 3D 운동방 테마별 색. Figma 배경 그림(1:534 선셋, 공개방 바닷가 무대)에서 뽑았다.
 import sunsetBg from '../../assets/bg/sunset.jpg'
-import oceanBg from '../../assets/bg/ocean-blur.jpg'
+import publicStageBg from '../../assets/bg/public-stage.jpg'
 import type { Theme } from '../Backdrop'
 
 export interface RoomPalette {
@@ -13,6 +13,8 @@ export interface RoomPalette {
   sky: string
   ground: string
   platform: string
+  /** 단상 옆면·계단. 윗면보다 조금 어두워야 바닥과 경계가 보인다 */
+  stageSide: string
   frame: string
   panel: string
   lampPost: string
@@ -30,6 +32,7 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     sky: '#f3b0cb',
     ground: '#c9b46e',
     platform: '#fbdcd8',
+    stageSide: '#e9c3c4',
     frame: '#6a4865',
     panel: '#f6cdea',
     lampPost: '#5b3a56',
@@ -39,12 +42,13 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     sun: '#ffe6cf',
   },
   public: {
-    backdrop: oceanBg,
+    backdrop: publicStageBg,
     backdropCropBottom: 0.42,
     backdropBottom: -3.4,
     sky: '#cfe6fb',
-    ground: '#57a7de',
-    platform: '#f1ebf8',
+    ground: '#d9c2e2',
+    platform: '#efd8ee',
+    stageSide: '#cdb0d6',
     frame: '#4a4458',
     panel: '#f6ecfa',
     lampPost: '#3a3340',
