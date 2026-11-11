@@ -1,7 +1,7 @@
 // 팀 백엔드(VITE_API_URL) 어댑터.
 // - 참가자: 서버가 발급한 재방문 토큰을 이 브라우저에 보관하고 모든 요청 헤더에 담는다.
-// - 루틴: 1회차는 서버 추천. 서버가 실패하면 규칙 기반 추천(lib/recommend)으로 대신 만든다.
-//   다음 회차 추천 API는 아직 없어서 규칙 기반으로 만들고, 그 루틴의 기록은 이 브라우저에만 저장한다.
+// - 루틴: 1회차·다음 회차 모두 서버 추천. 서버가 추천 불가를 주면 규칙 기반 추천(lib/recommend)으로 대신 만들고,
+//   그 루틴의 기록은 이 브라우저에만 저장한다.
 // - 기록: 시작할 때 서버 운동 기록 ID를 받아 sessionId로 쓰고, 끝날 때 그 ID로 확정한다.
 //   서버에 없는 화면용 값(운동 종류·일시정지 뺀 시간 등)은 이 브라우저에 같이 보관한다.
 // - 실시간 운동방은 서버 연결 전이라 로컬(BroadcastChannel)을 그대로 쓴다.
@@ -14,6 +14,7 @@ import { localRealtime } from '../local/realtime'
 import { ApiError, request } from './client'
 import { exerciseIdOf, fromCharacterCode, fromRecordResponse, parseServerTime, toApiGoal, toCharacterCode, toRecordRequest, toRoutine } from './mappers'
 import type {
+  NextRoundCreateRequest,
   ParticipantCreateResponse,
   ParticipantResponse,
   RoomResponse,
@@ -27,6 +28,7 @@ const KEY = {
   auth: 'fitmate.http.auth',
   serverRoutines: 'fitmate.http.serverRoutines',
   localRoutines: 'fitmate.http.localRoutines',
+  difficultySteps: 'fitmate.http.difficultySteps',
   sessions: 'fitmate.http.sessions',
 }
 
@@ -109,11 +111,48 @@ async function fetchServerRoutine(routineId: string): Promise<RoutineResponse> {
 
 const userIdOf = () => readAuth()?.profile.userId ?? ''
 
+// 난이도 표시는 화면 값이라 서버에 없다. 서버 루틴별로 이 브라우저에 보관한다
+const readDifficultySteps = () => readJson<Record<string, number>>(KEY.difficultySteps, {})
+
+function serverRoutineOf(r: RoutineResponse): Routine {
+  const routineId = String(r.routineId)
+  return { ...toRoutine(r, userIdOf()), difficultyStep: readDifficultySteps()[routineId] ?? 0 }
+}
+
+const isUsable = (r: RoutineResponse) => r.status === 'COMPLETED' && r.exercises.length > 0
+
+/** 서버 다음 회차 추천 (F-SYGFQC). 같은 운동 기록으로 다시 요청하면 서버가 처음 만든 추천을 돌려준다. */
+async function recommendNextOnServer(session: WorkoutSession, prev: Routine): Promise<Routine | null> {
+  let res: RoutineResponse
+  try {
+    res = await request<RoutineResponse>('/api/routines/next-round', {
+      method: 'POST',
+      body: { workoutId: Number(session.sessionId) } satisfies NextRoundCreateRequest,
+      token: tokenOf(),
+    })
+  } catch (e) {
+    // 서버가 잠깐 안 될 때는 이전에 받아 둔 추천을 쓴다. 없으면 결과 화면이 다시 시도를 보여준다
+    const cached = Object.values(readServerRoutines()).find((r) => String(r.basedOnWorkoutId) === session.sessionId)
+    // 404·409처럼 서버가 거절한 요청은 보관본으로 덮지 않는다
+    if (cached && !(e instanceof ApiError && e.kind === 'http' && e.status < 500)) return serverRoutineOf(cached)
+    throw e
+  }
+  if (!isUsable(res)) return null
+  cacheServerRoutine(res)
+  const routineId = String(res.routineId)
+  const steps = readDifficultySteps()
+  if (steps[routineId] === undefined) {
+    // 회차가 늘어도 목표량을 올리지 않았으면 난이도도 그대로다
+    writeJson(KEY.difficultySteps, { ...steps, [routineId]: (prev.difficultyStep ?? 0) + (res.adjustmentType === 'UP' ? 1 : 0) })
+  }
+  return serverRoutineOf(res)
+}
+
 const routine: RoutineService = {
   async recommendFirst(userId, goal) {
     try {
       const res = await request<RoutineResponse>('/api/routines', { method: 'POST', body: { goal: toApiGoal(goal) }, token: tokenOf() })
-      if (res.status === 'COMPLETED' && res.exercises.length > 0) return toRoutine(cacheServerRoutine(res), userId)
+      if (isUsable(res)) return toRoutine(cacheServerRoutine(res), userId)
     } catch {
       // 아래 규칙 기반 추천으로 넘어간다
     }
@@ -121,18 +160,23 @@ const routine: RoutineService = {
     return saveLocalRoutine({ ...buildFirstRoutine(userId, goal), isFallback: true })
   },
   async recommendNext(session) {
-    // 같은 세션으로 이미 만든 추천이 있으면 그대로 돌려준다 (결과 화면 재방문 대비)
-    const existing = Object.values(readLocalRoutines()).find((r) => r.basedOnSessionId === session.sessionId)
-    if (existing) return existing
     if (!session.routineId) throw new Error('루틴이 없는 세션은 다음 회차 추천에 쓰지 않아요')
     const prev = await routine.get(session.routineId)
     if (!prev) throw new Error('이전 루틴을 찾을 수 없어요')
-    return saveLocalRoutine(buildNextRoutine(prev, session))
+    // 서버에 기록된 운동이면 서버가 추천한다. 그래야 다음 회차 기록도 서버에 남는다
+    if (isServerId(session.sessionId) && isServerId(session.routineId)) {
+      const next = await recommendNextOnServer(session, prev)
+      if (next) return next
+    }
+    // 서버 기록이 없거나 서버가 추천 불가를 줬을 때만 규칙 기반 추천. 같은 세션이면 이미 만든 추천을 돌려준다
+    const existing = Object.values(readLocalRoutines()).find((r) => r.basedOnSessionId === session.sessionId)
+    if (existing) return existing
+    return saveLocalRoutine({ ...buildNextRoutine(prev, session), isFallback: true })
   },
   async get(routineId) {
     if (!isServerId(routineId)) return readLocalRoutines()[routineId] ?? null
     try {
-      return toRoutine(await fetchServerRoutine(routineId), userIdOf())
+      return serverRoutineOf(await fetchServerRoutine(routineId))
     } catch (e) {
       if (e instanceof ApiError && e.status === 404) return null
       throw e

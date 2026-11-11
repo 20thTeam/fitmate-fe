@@ -46,6 +46,17 @@ export interface RoutineResponse {
   goalName: string
   status: 'PREPARING' | 'COMPLETED' | 'UNAVAILABLE'
   exercises: RoutineExerciseResponse[]
+  // 아래는 다음 회차 추천에서 채워진다 (첫 회차는 null·빈 목록). 예전에 이 브라우저에 보관한 응답에는 없을 수 있다
+  previousRoutineId?: number | null
+  basedOnWorkoutId?: number | null
+  /** UP 상향, KEEP 유지, UNAVAILABLE 기록이 없어 분석 불가(올리지 않음) */
+  adjustmentType?: 'UP' | 'KEEP' | 'UNAVAILABLE' | null
+  /** 운동별 조정 사유 (순서대로) */
+  adjustmentReasons?: string[]
+}
+
+export interface NextRoundCreateRequest {
+  workoutId: number
 }
 
 export interface ExerciseRecordRequest {
