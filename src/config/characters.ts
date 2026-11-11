@@ -1,5 +1,5 @@
 // 캐릭터 목록 (Figma 프로필 설정 시안: 원형 4종).
-// 3D 모델은 옷 색이 가까운 캐릭터에 임시로 붙였다. 프로필 화면 그림이 3D 캐릭터로 바뀌면 다시 맞춘다.
+// 3D 모델은 옷 색이 가까운 캐릭터에 붙였다 (핑크→girl2, 옐로→girl1, 블루→boy1, 그린→boy2, 2026-11-11 확정).
 // 모델을 불러오지 못하면 운동방에서 공 모양으로 나온다.
 import pink from '../assets/char/c1.svg'
 import yellow from '../assets/char/c2.svg'
