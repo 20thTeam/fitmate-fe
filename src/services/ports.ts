@@ -51,6 +51,16 @@ export interface TeamService {
   get(roomId: string): Promise<TeamProgress>
 }
 
+/**
+ * 내 실시간 연결 상태. 친구의 연결 상태는 Participant.lastSeenAt으로 따로 판단한다.
+ * - connected    : 정상
+ * - slow         : 연결은 있지만 서버 응답이 늦음
+ * - reconnecting : 끊겨서 다시 연결하는 중 (친구 상태는 최신이 아닐 수 있음)
+ * - replaced     : 같은 프로필로 다른 창에서 입장해 이 창 연결이 닫힘. 자동으로 다시 붙지 않는다
+ * - closed       : 다시 연결할 수 없음 (정원 초과·참가자 없음 등). 사용자가 다시 시도해야 함
+ */
+export type ConnectionState = 'connected' | 'slow' | 'reconnecting' | 'replaced' | 'closed'
+
 /** 실시간 운동방 연결 (F-STRTHT, F-ERSUOK, F-JENTLD, F-HEIEZC, F-DXORMB) */
 export interface RoomConnection {
   readonly roomId: string
@@ -61,6 +71,8 @@ export interface RoomConnection {
   onParticipants(cb: (list: Participant[]) => void): () => void
   onPose(cb: (frame: PoseFrame) => void): () => void
   onCheer(cb: (ev: CheerEvent) => void): () => void
+  /** 등록하자마자 지금 상태를 한 번 알려 준다 */
+  onConnection(cb: (state: ConnectionState) => void): () => void
   leave(): void
 }
 

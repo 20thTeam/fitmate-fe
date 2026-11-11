@@ -1,6 +1,7 @@
 // 내 카메라의 최신 관절 좌표를 3D 캐릭터에 넘기는 공유 칸.
 // 매 프레임 바뀌는 값이라 React 상태·zustand 대신 숫자 배열 하나를 고쳐 쓴다 (AGENTS.md 성능 규칙).
-// usePose가 쓰고, 운동방 3D의 내 캐릭터가 useFrame에서 읽는다. 브라우저 밖으로 나가지 않는다.
+// usePose가 쓰고, 운동방 3D의 내 캐릭터가 useFrame에서 읽는다.
+// 운동방에서는 useRoom이 이 좌표만 친구에게 보낸다 (카메라 영상은 브라우저 밖으로 나가지 않는다).
 import type { Lm } from './landmarks'
 
 const COUNT = 33

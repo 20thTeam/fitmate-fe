@@ -24,6 +24,7 @@ import PoseStatus from '../components/room/PoseStatus'
 import InviteModal from '../components/room/InviteModal'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
+import ConnectionBanner from '../components/room/ConnectionBanner'
 import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import groupIcon from '../assets/icons/group.png'
@@ -304,6 +305,7 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
       view={phase === 'play' || phase === 'rest' ? 'front' : 'tour'}
     >
       <Logo />
+      <ConnectionBanner state={room.connection} onReconnect={room.reconnect} />
 
       {phase === 'lobby' && (
         <>

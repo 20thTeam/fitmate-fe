@@ -1,8 +1,17 @@
 // 서버 값 ↔ 프론트 도메인 값 변환.
 // 운동 ID는 자세 판정(lib/pose)·가이드(config/exercises)가 쓰는 프론트 ID로 바꿔 둔다.
 
-import type { ExerciseRecord, GoalId, Routine, RoutineItem } from '../../types/domain'
-import type { ApiGoal, ExerciseRecordRequest, ExerciseRecordResponse, RoutineExerciseResponse, RoutineResponse } from './types'
+import type { ExerciseRecord, GoalId, Participant, ParticipantStatus, Routine, RoutineItem } from '../../types/domain'
+import type {
+  ApiGoal,
+  ExerciseRecordRequest,
+  ExerciseRecordResponse,
+  RoutineExerciseResponse,
+  RoutineResponse,
+  RtParticipantView,
+  RtProgressStatus,
+  RtStatusPayload,
+} from './types'
 
 const EXERCISE_ID_BY_CODE: Record<string, string> = {
   SQUAT: 'squat',
@@ -117,4 +126,81 @@ export function parseServerTime(s: string | null): number | null {
   if (!s) return null
   const t = Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(s) ? s : `${s}+09:00`)
   return Number.isNaN(t) ? null : t
+}
+
+// ───── 운동방 실시간 연결 ─────
+
+// 서버는 진행 상태를 5가지만 안다. 준비 완료·일시정지·유효 횟수는 아직 서버로 전달되지 않는다 (BE 요청 대상)
+const TO_RT_STATUS: Record<ParticipantStatus, RtProgressStatus> = {
+  waiting: 'WAITING',
+  ready: 'WAITING',
+  exercising: 'EXERCISING',
+  paused: 'RESTING',
+  resting: 'RESTING',
+  done: 'FINISHED',
+}
+
+const FROM_RT_STATUS: Record<RtProgressStatus, ParticipantStatus> = {
+  WAITING: 'waiting',
+  EXERCISING: 'exercising',
+  RESTING: 'resting',
+  FINISHED: 'done',
+  // 카메라를 못 쓰는 친구는 운동이 멈춘 상태로 보여 준다
+  CAMERA_ERROR: 'paused',
+}
+
+/** 서버 운동 이름 최대 길이 */
+const RT_EXERCISE_NAME_MAX = 50
+
+export function toRtStatus(p: Pick<Participant, 'status' | 'currentExercise'>): RtStatusPayload {
+  return {
+    // 서버 운동 ID는 숫자인데 FE 운동 ID는 문자열이라 보내지 않는다. 화면에는 이름만 쓴다
+    exerciseId: null,
+    exerciseName: p.currentExercise ? p.currentExercise.slice(0, RT_EXERCISE_NAME_MAX) : null,
+    progressStatus: TO_RT_STATUS[p.status],
+  }
+}
+
+export function fromRtStatus(s: RtStatusPayload): Pick<Participant, 'status' | 'currentExercise'> {
+  return { status: FROM_RT_STATUS[s.progressStatus] ?? 'waiting', currentExercise: s.exerciseName ?? undefined }
+}
+
+export function fromRtParticipant(v: RtParticipantView): Participant {
+  return {
+    userId: String(v.participantId),
+    nickname: v.nickname,
+    characterId: fromCharacterCode(v.characterCode),
+    ...fromRtStatus(v),
+    lastSeenAt: 0,
+  }
+}
+
+// 서버 리액션 코드는 영문 대문자·숫자·밑줄만 된다. 화면은 이모지를 쓴다
+const REACTION_CODES: Record<string, string> = { '🔥': 'FIRE', '👏': 'CLAP', '💪': 'MUSCLE' }
+
+export function toReactionCode(reaction: string) {
+  if (REACTION_CODES[reaction]) return REACTION_CODES[reaction]
+  return /^[A-Z0-9_]{1,30}$/.test(reaction) ? reaction : 'FIRE'
+}
+
+export function fromReactionCode(code: string) {
+  return Object.keys(REACTION_CODES).find((emoji) => REACTION_CODES[emoji] === code) ?? '🔥'
+}
+
+/** 관절 좌표: FE는 [x, y, z, v] × 33 한 줄, 서버는 관절별 배열. 소수 3자리(가시성 2자리)로 줄여 2KB 한도 안에 둔다 */
+export function toRtLandmarks(flat: ArrayLike<number>): number[][] | null {
+  if (flat.length === 0 || flat.length % 4 !== 0 || flat.length > 33 * 4) return null
+  const out: number[][] = []
+  for (let i = 0; i < flat.length; i += 4) {
+    const x = flat[i], y = flat[i + 1], z = flat[i + 2], v = flat[i + 3]
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(v)) return null
+    out.push([Math.round(x * 1000) / 1000, Math.round(y * 1000) / 1000, Math.round(z * 1000) / 1000, Math.round(v * 100) / 100])
+  }
+  return out
+}
+
+export function fromRtLandmarks(nested: number[][]): number[] {
+  const out: number[] = []
+  for (const lm of nested) out.push(lm[0] ?? 0, lm[1] ?? 0, lm[2] ?? 0, lm[3] ?? 1)
+  return out
 }

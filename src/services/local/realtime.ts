@@ -106,6 +106,11 @@ export const localRealtime: RealtimeService = {
         cheerListeners.add(cb)
         return () => cheerListeners.delete(cb)
       },
+      onConnection(cb) {
+        // 같은 브라우저 안이라 끊길 일이 없다
+        cb('connected')
+        return () => {}
+      },
       leave() {
         clearInterval(beat)
         window.removeEventListener('beforeunload', onUnload)

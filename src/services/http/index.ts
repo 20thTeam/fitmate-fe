@@ -4,14 +4,17 @@
 //   그 루틴의 기록은 이 브라우저에만 저장한다.
 // - 기록: 시작할 때 서버 운동 기록 ID를 받아 sessionId로 쓰고, 끝날 때 그 ID로 확정한다.
 //   서버에 없는 화면용 값(운동 종류·일시정지 뺀 시간 등)은 이 브라우저에 같이 보관한다.
-// - 실시간 운동방은 서버 연결 전이라 로컬(BroadcastChannel)을 그대로 쓴다.
+// - 실시간: 친구 운동방은 서버 웹소켓(/ws)으로 다른 PC와 연결한다(http/realtime.ts).
+//   선셋 공개 방은 서버에 아직 방이 없어서(정원 5명 방 하나뿐) 로컬(BroadcastChannel)을 쓴다.
 
 import type { Profile, Routine, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { ProfileService, RecordService, RoutineService, Services, TeamService } from '../ports'
+import type { ProfileService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { readJson, uid, writeJson } from '../local/storage'
 import { localRealtime } from '../local/realtime'
-import { ApiError, request } from './client'
+import { DEMO_ROOM_ID } from '../../store/app'
+import { ApiError, request, WS_URL } from './client'
+import { createWsRealtime } from './realtime'
 import { exerciseIdOf, fromCharacterCode, fromRecordResponse, parseServerTime, toApiGoal, toCharacterCode, toRecordRequest, toRoutine } from './mappers'
 import type {
   NextRoundCreateRequest,
@@ -327,4 +330,23 @@ const team: TeamService = {
   },
 }
 
-export const httpServices: Services = { profile, routine, record, team, realtime: localRealtime }
+// ───── 실시간 운동방 ─────
+
+const wsRealtime = createWsRealtime({
+  getToken: () => readAuth()?.token ?? null,
+  async enterRoom(token) {
+    // 서버는 REST 입장을 마친 방에만 실시간 입장을 받는다. 같은 방에 다시 들어가도 그대로다
+    const room = await demoRoom()
+    await request<RoomResponse>(`/api/rooms/${room.roomId}/enter`, { method: 'POST', token })
+    return room.roomId
+  },
+})
+
+const realtime: RealtimeService = {
+  join(roomId, me, options) {
+    if (roomId === DEMO_ROOM_ID && WS_URL) return wsRealtime.join(roomId, me, options)
+    return localRealtime.join(roomId, me, options)
+  },
+}
+
+export const httpServices: Services = { profile, routine, record, team, realtime }
