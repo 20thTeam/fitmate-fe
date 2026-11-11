@@ -59,7 +59,8 @@
   place-items: center;
 }
 .scene-screen[data-variant='friend'] { left: 28.9%; top: 30%; width: 42.2%; height: 35%; }
-.scene-screen[data-variant='public'] { left: 29.9%; top: 23.2%; width: 40.3%; height: 31.6%; }
+.scene-screen[data-variant='public'][data-view='front'] { left: 41.9%; top: 24.4%; width: 29.5%; height: 33.3%; }
+.scene-screen[data-variant='public'][data-view='tour'] { left: 28%; top: 16.4%; width: 31.7%; height: 35.7%; }
 /* 3D 캔버스·2D 그림이 들어가는 층. 스크린 DOM(drei Html)이 패널 위로 올라오지 않게 층을 따로 만든다 */
 .scene-stage { position: absolute; inset: 0; z-index: 0; }
 .scene-canvas { position: absolute !important; inset: 0; }

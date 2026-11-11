@@ -1,11 +1,11 @@
-// 일반 화면 배경. friend = 선셋 풍경, public = 흐린 바다 (Figma 결과·기록·카메라 확인 시안).
+// 일반 화면 배경. friend = 선셋 풍경, public = 바닷가 무대 (Figma 결과·기록·카메라 확인 시안).
 import type { CSSProperties, ReactNode } from 'react'
 import sunsetBg from '../assets/bg/sunset.jpg'
-import oceanBg from '../assets/bg/ocean-blur.jpg'
+import publicStageBg from '../assets/bg/public-stage.jpg'
 
 export type Theme = 'friend' | 'public'
 
-const BG: Record<Theme, string> = { friend: sunsetBg, public: oceanBg }
+const BG: Record<Theme, string> = { friend: sunsetBg, public: publicStageBg }
 
 interface Props {
   theme?: Theme

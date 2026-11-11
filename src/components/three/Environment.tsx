@@ -243,12 +243,12 @@ export default function Environment({ theme, palette }: { theme: Theme; palette:
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
         <circleGeometry args={[40, 48]} />
-        <meshStandardMaterial color={palette.ground} roughness={isFriend ? 0.9 : 0.3} />
+        <meshStandardMaterial color={palette.ground} roughness={isFriend ? 0.9 : 0.18} metalness={isFriend ? 0 : 0.08} />
       </mesh>
 
       {/* 무대 바닥: 뒤 가장자리는 스크린 바로 뒤, 앞은 카메라 밑까지 이어져 화면 아래를 채운다 */}
       <RoundedBox args={[40, 0.7, 26]} radius={0.18} position={[0, -0.35, 8.8]} receiveShadow>
-        <meshStandardMaterial color={palette.platform} emissive={palette.platform} emissiveIntensity={0.3} roughness={0.3} />
+        <meshStandardMaterial color={palette.platform} emissive={palette.platform} emissiveIntensity={0.08} roughness={0.18} metalness={0.08} />
       </RoundedBox>
 
       <Screen palette={palette} />

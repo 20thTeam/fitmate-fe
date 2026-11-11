@@ -1,6 +1,6 @@
-// 3D 운동방 테마별 색. Figma 배경 그림(1:534 선셋, 공개방 바다)에서 뽑았다.
+// 3D 운동방 테마별 색. Figma 배경 그림(1:534 선셋, 공개방 바닷가 무대)에서 뽑았다.
 import sunsetBg from '../../assets/bg/sunset.jpg'
-import oceanBg from '../../assets/bg/ocean-blur.jpg'
+import publicStageBg from '../../assets/bg/public-stage.jpg'
 import type { Theme } from '../Backdrop'
 
 export interface RoomPalette {
@@ -39,12 +39,12 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     sun: '#ffe6cf',
   },
   public: {
-    backdrop: oceanBg,
+    backdrop: publicStageBg,
     backdropCropBottom: 0.42,
     backdropBottom: -3.4,
     sky: '#cfe6fb',
-    ground: '#57a7de',
-    platform: '#f1ebf8',
+    ground: '#ead9ef',
+    platform: '#f3e4f2',
     frame: '#4a4458',
     panel: '#f6ecfa',
     lampPost: '#3a3340',
