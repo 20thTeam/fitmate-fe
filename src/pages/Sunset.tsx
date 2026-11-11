@@ -23,6 +23,7 @@ import WorkoutHud from '../components/room/WorkoutHud'
 import PoseStatus from '../components/room/PoseStatus'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
+import ConnectionBanner from '../components/room/ConnectionBanner'
 import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import groupIcon from '../assets/icons/group-public.png'
@@ -227,6 +228,7 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
       view={phase === 'play' ? 'front' : 'tour'}
     >
       <Logo />
+      <ConnectionBanner state={room.connection} onReconnect={room.reconnect} />
       <ModeTabs active="public" />
 
       {phase === 'lobby' && (

@@ -113,3 +113,57 @@ export interface TeamXpResponse {
   nextLevelXp: number | null
   maxLevel: boolean | null
 }
+
+// ───── 운동방 실시간 연결 (/ws). BE docs/실시간_메시지_형식.md 기준 ─────
+
+export type RtProgressStatus = 'WAITING' | 'EXERCISING' | 'RESTING' | 'FINISHED' | 'CAMERA_ERROR'
+export type RtConnectionStatus = 'CONNECTED' | 'UNSTABLE'
+
+export interface RtParticipantView {
+  participantId: number
+  nickname: string
+  characterCode: string
+  exerciseId: number | null
+  exerciseName: string | null
+  progressStatus: RtProgressStatus
+  connectionStatus: RtConnectionStatus
+}
+
+export interface RtStatusPayload {
+  exerciseId: number | null
+  exerciseName: string | null
+  progressStatus: RtProgressStatus
+}
+
+export interface RtCheerPayload {
+  targetParticipantId: number
+  reaction: string
+}
+
+export interface RtErrorPayload {
+  code: string
+  message: string
+  closed: boolean
+}
+
+/** 서버 → 클라이언트 공통 봉투 */
+export type RtServerMessage = { roomId: number | null; participantId: number | null; sentAt: string } & (
+  | { type: 'ROOM_SNAPSHOT'; payload: { capacity: number; participants: RtParticipantView[] } }
+  | { type: 'PARTICIPANT_JOINED'; payload: RtParticipantView }
+  | { type: 'PARTICIPANT_LEFT'; payload: { reason: 'LEFT' | 'TIMEOUT' } }
+  | { type: 'PARTICIPANT_STATUS'; payload: RtStatusPayload }
+  | { type: 'PARTICIPANT_POSE'; payload: { landmarks: number[][] } }
+  | { type: 'CHEER_RECEIVED' | 'CHEER_SENT'; payload: RtCheerPayload }
+  | { type: 'CONNECTION_STATUS'; payload: { connectionStatus: RtConnectionStatus } }
+  | { type: 'PONG'; payload: null }
+  | { type: 'ERROR'; payload: RtErrorPayload }
+)
+
+/** 클라이언트 → 서버 */
+export type RtClientMessage =
+  | { type: 'JOIN'; payload: { token: string; roomId: number } }
+  | { type: 'STATUS'; payload: RtStatusPayload }
+  | { type: 'POSE'; payload: { landmarks: number[][] } }
+  | { type: 'CHEER'; payload: RtCheerPayload }
+  | { type: 'PING' }
+  | { type: 'LEAVE' }
