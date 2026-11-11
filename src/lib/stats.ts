@@ -1,11 +1,17 @@
 // 저장된 실제 세션만으로 계산하는 요약 통계 (F-YBENHN). 기록이 없으면 0을 돌려준다.
 
-import type { WorkoutSession } from '../types/domain'
+import type { ExerciseRecord, WorkoutSession } from '../types/domain'
 
 const DAY_MS = 86_400_000
 const startOfDay = (t: number) => new Date(t).setHours(0, 0, 0, 0)
 
-export const totalValidReps = (s: WorkoutSession) => s.records.reduce((a, r) => a + r.validReps, 0)
+// 자세 인식이 안 된 운동의 0회는 실제 수행량이 아니라서 합계에서 뺀다. 예전 기록(상태 없음)은 측정한 것으로 본다
+const isMeasured = (r: ExerciseRecord) => r.measurementStatus !== 'NOT_MEASURED'
+
+/** 한 운동이라도 실제로 측정했는지. false면 횟수를 0이 아니라 '측정 못 함'으로 보여준다 */
+export const hasMeasuredRecord = (s: WorkoutSession) => s.records.some(isMeasured)
+
+export const totalValidReps = (s: WorkoutSession) => s.records.filter(isMeasured).reduce((a, r) => a + r.validReps, 0)
 
 export function completionRate(s: WorkoutSession) {
   if (s.records.length === 0) return 0
@@ -31,5 +37,7 @@ export function summarize(sessions: WorkoutSession[], now = Date.now()) {
     streakDays: streak,
     totalActiveMs: sessions.reduce((a, s) => a + s.activeMs, 0),
     totalReps: sessions.reduce((a, s) => a + totalValidReps(s), 0),
+    /** 측정한 운동이 있는 세션이 하나라도 있는지 */
+    hasMeasuredReps: sessions.some(hasMeasuredRecord),
   }
 }
