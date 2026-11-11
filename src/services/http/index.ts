@@ -15,8 +15,10 @@ import { localRealtime } from '../local/realtime'
 import { DEMO_ROOM_ID } from '../../store/app'
 import { ApiError, request, WS_URL } from './client'
 import { createWsRealtime } from './realtime'
-import { exerciseIdOf, fromCharacterCode, fromRecordResponse, parseServerTime, toApiGoal, toCharacterCode, toRecordRequest, toRoutine } from './mappers'
+import { exerciseIdOf, fromApiGoal, fromCharacterCode, fromRecordResponse, parseServerTime, toApiGoal, toCharacterCode, toRecordRequest, toRoutine } from './mappers'
 import type {
+  HistoryResponse,
+  HistoryWorkoutResponse,
   NextRoundCreateRequest,
   ParticipantCreateResponse,
   ParticipantResponse,
@@ -251,6 +253,33 @@ async function mergeResult(res: WorkoutResultResponse, cached: WorkoutSession | 
   }
 }
 
+/** 서버 성장 기록 1건을 화면용 세션으로 바꾼다. 서버에 없는 값(일시정지 뺀 시간·운동 종류 등)은 이 기기 보관본에서 가져온다 */
+function fromHistoryWorkout(w: HistoryWorkoutResponse, cached: WorkoutSession | undefined, userId: string): WorkoutSession {
+  const startedAt = parseServerTime(w.startedAt) ?? cached?.startedAt ?? Date.now()
+  const endedAt = parseServerTime(w.finishedAt) ?? cached?.endedAt ?? startedAt
+  const records = w.records.map((rec) => {
+    const id = exerciseIdOf(rec.exerciseCode)
+    const base = cached?.records.find((x) => x.exerciseId === id)
+    const r = fromRecordResponse(rec, base, undefined)
+    // 목록 응답에는 목표량이 없어서 목표 달성 여부는 이 기기 기록이 있을 때만 쓴다
+    return { ...r, completed: base?.completed ?? false }
+  })
+  return {
+    sessionId: String(w.workoutId),
+    kind: cached?.kind ?? 'party',
+    userId,
+    roomId: cached?.roomId ?? DEMO_ROOM_ID,
+    routineId: String(w.routineId),
+    round: w.roundNo,
+    goal: fromApiGoal(w.goal),
+    startedAt,
+    endedAt,
+    // 서버는 일시정지 시간을 모른다. 이 기기 기록이 없으면 운동별 소요 시간 합, 그것도 없으면 시작~종료 시간으로 보여준다
+    activeMs: cached?.activeMs ?? (w.exerciseSeconds ?? w.elapsedSeconds) * 1000,
+    records,
+  }
+}
+
 const record: RecordService = {
   async startSession({ routineId }) {
     // 선셋(루틴 없음)과 규칙 기반 루틴은 서버 기록이 없어서 이 기기 ID를 쓴다
@@ -292,8 +321,19 @@ const record: RecordService = {
     }
   },
   async listSessions(userId) {
-    // 서버에 내 기록 목록 API가 아직 없어서 이 기기에 보관한 기록을 보여준다
-    return readSessions().filter((s) => s.userId === userId)
+    const cached = readSessions().filter((s) => s.userId === userId)
+    let res: HistoryResponse
+    try {
+      res = await request<HistoryResponse>('/api/participants/me/history', { token: tokenOf() })
+    } catch (e) {
+      // 서버가 잠깐 안 될 때는 이 기기 기록을 보여준다. 이 기기에 기록이 없으면 '기록 없음' 대신 다시 시도를 띄운다
+      if (cached.length > 0) return cached
+      throw e
+    }
+    // 서버 기록이 기준이다 (다른 기기·브라우저에서 한 운동 포함, F-YBENHN). 선셋·규칙 기반 루틴 기록은 서버에 없어서 이 기기 보관본을 붙인다
+    const byId = new Map(cached.map((s) => [s.sessionId, s]))
+    const server = res.workouts.map((w) => fromHistoryWorkout(w, byId.get(String(w.workoutId)), userId))
+    return [...server, ...cached.filter((s) => !isServerId(s.sessionId))]
   },
 }
 
