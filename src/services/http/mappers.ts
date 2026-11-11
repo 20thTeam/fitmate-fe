@@ -49,7 +49,11 @@ export function toRoutine(r: RoutineResponse, userId: string): Routine {
     round: r.roundNo,
     goal: fromApiGoal(r.goal),
     items: [...r.exercises].sort((a, b) => a.sortOrder - b.sortOrder).map(toRoutineItem),
-    provisional: false,
+    prevRoutineId: r.previousRoutineId == null ? undefined : String(r.previousRoutineId),
+    basedOnSessionId: r.basedOnWorkoutId == null ? undefined : String(r.basedOnWorkoutId),
+    changeReasons: r.adjustmentReasons?.length ? r.adjustmentReasons : undefined,
+    // 다음 회차 판정 기준·증가 폭은 서버도 시연용 임시 규칙이다 (PL-SOBVBH)
+    provisional: r.adjustmentType != null,
   }
 }
 
