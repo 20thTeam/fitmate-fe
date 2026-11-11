@@ -2,8 +2,8 @@
 // 구도는 Figma 1:5(추천 루틴 확인·친구) 정면 시안에 맞췄다: 스크린이 무대 뒤 가장자리에 붙고,
 // 무대가 화면 아래를 채우며 좌우로 넘어가고, 무대 뒤로 덤불·바위, 양끝에 나무가 살짝 보인다.
 import { useMemo, useRef } from 'react'
-import { BackSide, Box3, Color, MirroredRepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type Object3D } from 'three'
-import { RoundedBox, useGLTF, useTexture } from '@react-three/drei'
+import { AdditiveBlending, BackSide, Box3, CanvasTexture, Color, MirroredRepeatWrapping, SRGBColorSpace, type Mesh, type MeshStandardMaterial, type Object3D } from 'three'
+import { MeshReflectorMaterial, RoundedBox, useGLTF, useTexture } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { RoomPalette } from './palette'
 import { SCREEN_CENTER, SCREEN_H, SCREEN_W } from './layout'
@@ -89,7 +89,7 @@ function BackdropWall({ palette }: { palette: RoomPalette }) {
   )
 }
 
-function Lamp({ position, palette }: { position: [number, number, number]; palette: RoomPalette }) {
+function Lamp({ position, palette, hasHalo = false }: { position: [number, number, number]; palette: RoomPalette; hasHalo?: boolean }) {
   return (
     <group position={position}>
       <mesh position={[0, 0.1, 0]} castShadow>
@@ -104,9 +104,50 @@ function Lamp({ position, palette }: { position: [number, number, number]; palet
         <boxGeometry args={[0.62, 0.5, 0.62]} />
         <meshStandardMaterial color={palette.lampGlow} emissive={palette.lampGlow} emissiveIntensity={1.4} toneMapped={false} />
       </mesh>
+      {hasHalo && (
+        <>
+          {/* 시안처럼 머리 위아래에 짙은 테를 둘러 밝은 하늘 앞에서도 가로등 머리가 보이게 한다 */}
+          <mesh position={[0, 3.41, 0]}>
+            <boxGeometry args={[0.74, 0.12, 0.74]} />
+            <meshStandardMaterial color={palette.lampPost} roughness={0.6} />
+          </mesh>
+          <mesh position={[0, 2.8, 0]}>
+            <boxGeometry args={[0.5, 0.1, 0.5]} />
+            <meshStandardMaterial color={palette.lampPost} roughness={0.6} />
+          </mesh>
+        </>
+      )}
+      {hasHalo && (
+        <sprite position={[0, 3.1, 0]} scale={[2.4, 2.4, 1]}>
+          <spriteMaterial map={getGlowTexture()} color={palette.lampGlow} blending={AdditiveBlending} transparent depthWrite={false} opacity={0.9} fog={false} />
+        </sprite>
+      )}
       <pointLight position={[0, 3, 0.4]} color={palette.lampGlow} intensity={6} distance={7} decay={2} />
     </group>
   )
+}
+
+let glowTexture: CanvasTexture | null = null
+
+/** 가로등 둘레에 번지는 빛. 블룸(후처리) 대신 가운데가 밝은 둥근 그림을 겹친다 */
+function getGlowTexture() {
+  if (glowTexture) return glowTexture
+  const size = 128
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(0.25, 'rgba(255,255,255,0.45)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = g
+    ctx.fillRect(0, 0, size, size)
+  }
+  glowTexture = new CanvasTexture(canvas)
+  glowTexture.colorSpace = SRGBColorSpace
+  return glowTexture
 }
 
 interface PropProps {
@@ -235,6 +276,58 @@ function NearPropCuller() {
   return null
 }
 
+// 공개방 무대 (Figma 바닷가 무대 시안). 스크린보다 조금 넓은 단상이라 옆 가장자리와 계단이 화면 양끝에 보인다.
+// 앞쪽은 카메라 밑까지 이어진다. 단상 높이 0.6을 계단 4칸(0.15씩)으로 내려간다.
+const PUBLIC_STAGE_HALF_W = 5.8
+const PUBLIC_STAGE_BACK_Z = -4.4
+const PUBLIC_STAGE_FRONT_Z = 21.8
+const STAIR_Z = -2.4
+const STAIR_LEN = 2.6
+const STEP_RISE = 0.15
+const STEP_RUN = 0.45
+
+function PublicStage({ palette }: { palette: RoomPalette }) {
+  const depth = PUBLIC_STAGE_FRONT_Z - PUBLIC_STAGE_BACK_Z
+  const centerZ = (PUBLIC_STAGE_FRONT_Z + PUBLIC_STAGE_BACK_Z) / 2
+  const width = PUBLIC_STAGE_HALF_W * 2
+  return (
+    <>
+      <RoundedBox args={[width, 0.7, depth]} radius={0.12} position={[0, -0.35, centerZ]} receiveShadow>
+        <meshStandardMaterial color={palette.stageSide} roughness={0.3} />
+      </RoundedBox>
+      {/* 윗면: 스크린·가로등·캐릭터가 흐릿하게 비치는 반짝이는 바닥. 반사 그림은 512px로 낮춰 부담을 줄인다 */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, centerZ]} receiveShadow>
+        <planeGeometry args={[width - 0.2, depth - 0.2]} />
+        <MeshReflectorMaterial
+          resolution={512}
+          blur={[60, 420]}
+          mixBlur={0.9}
+          mixStrength={0.7}
+          mixContrast={1}
+          mirror={0.25}
+          color={palette.platform}
+          roughness={0.45}
+          metalness={0.05}
+        />
+      </mesh>
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          {[0, 1, 2].map((i) => {
+            const top = -STEP_RISE * (i + 1)
+            const h = top - GROUND_Y
+            return (
+              <mesh key={i} position={[side * (PUBLIC_STAGE_HALF_W + STEP_RUN * (i + 0.5)), GROUND_Y + h / 2, STAIR_Z]} receiveShadow castShadow>
+                <boxGeometry args={[STEP_RUN, h, STAIR_LEN]} />
+                <meshStandardMaterial color={i % 2 ? palette.platform : palette.stageSide} roughness={0.3} />
+              </mesh>
+            )
+          })}
+        </group>
+      ))}
+    </>
+  )
+}
+
 export default function Environment({ theme, palette }: { theme: Theme; palette: RoomPalette }) {
   const isFriend = theme === 'friend'
   return (
@@ -243,13 +336,23 @@ export default function Environment({ theme, palette }: { theme: Theme; palette:
 
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, GROUND_Y, 0]} receiveShadow>
         <circleGeometry args={[40, 48]} />
-        <meshStandardMaterial color={palette.ground} roughness={isFriend ? 0.9 : 0.18} metalness={isFriend ? 0 : 0.08} />
+        {isFriend
+          ? <meshStandardMaterial color={palette.ground} roughness={0.9} />
+          : <meshStandardMaterial color={palette.ground} emissive={palette.ground} emissiveIntensity={0.3} roughness={0.2} metalness={0.05} />}
       </mesh>
 
-      {/* 무대 바닥: 뒤 가장자리는 스크린 바로 뒤, 앞은 카메라 밑까지 이어져 화면 아래를 채운다 */}
-      <RoundedBox args={[40, 0.7, 26]} radius={0.18} position={[0, -0.35, 8.8]} receiveShadow>
-        <meshStandardMaterial color={palette.platform} emissive={palette.platform} emissiveIntensity={0.08} roughness={0.18} metalness={0.08} />
-      </RoundedBox>
+      {isFriend ? (
+        // 무대 바닥: 뒤 가장자리는 스크린 바로 뒤, 앞은 카메라 밑까지 이어져 화면 아래를 채운다
+        <RoundedBox args={[40, 0.7, 26]} radius={0.18} position={[0, -0.35, 8.8]} receiveShadow>
+          <meshStandardMaterial color={palette.platform} emissive={palette.platform} emissiveIntensity={0.08} roughness={0.18} metalness={0.08} />
+        </RoundedBox>
+      ) : (
+        <>
+          <PublicStage palette={palette} />
+          <Lamp position={[-5.3, 0, -2.6]} palette={palette} hasHalo />
+          <Lamp position={[5.3, 0, -2.6]} palette={palette} hasHalo />
+        </>
+      )}
 
       <Screen palette={palette} />
 

@@ -13,6 +13,8 @@ export interface RoomPalette {
   sky: string
   ground: string
   platform: string
+  /** 단상 옆면·계단. 윗면보다 조금 어두워야 바닥과 경계가 보인다 */
+  stageSide: string
   frame: string
   panel: string
   lampPost: string
@@ -30,6 +32,7 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     sky: '#f3b0cb',
     ground: '#c9b46e',
     platform: '#fbdcd8',
+    stageSide: '#e9c3c4',
     frame: '#6a4865',
     panel: '#f6cdea',
     lampPost: '#5b3a56',
@@ -43,8 +46,9 @@ export const PALETTES: Record<Theme, RoomPalette> = {
     backdropCropBottom: 0.42,
     backdropBottom: -3.4,
     sky: '#cfe6fb',
-    ground: '#ead9ef',
-    platform: '#f3e4f2',
+    ground: '#d9c2e2',
+    platform: '#efd8ee',
+    stageSide: '#cdb0d6',
     frame: '#4a4458',
     panel: '#f6ecfa',
     lampPost: '#3a3340',
