@@ -4,10 +4,11 @@
 export type GoalId = 'weight_loss' | 'posture' | 'strength' | 'stamina'
 
 // 화면 문구는 Figma 목표 선택 시안을 따른다. id는 백엔드 계약이라 그대로 둔다.
+// posture는 시안에 '스트레칭'이었지만 서버·임시 루틴 모두 스쿼트·힙 힌지·플랭크라서 실제 내용에 맞춰 '자세 개선'으로 쓴다
 export const GOALS: { id: GoalId; label: string; desc: string }[] = [
   { id: 'strength', label: '근력 운동', desc: '전신 근육을 탄탄하게!' },
   { id: 'stamina', label: '유산소 운동', desc: '더 가볍게, 더 건강하게!' },
-  { id: 'posture', label: '스트레칭', desc: '오늘도 부드럽게!' },
+  { id: 'posture', label: '자세 개선', desc: '바른 자세로 가볍게!' },
   { id: 'weight_loss', label: '다이어트 운동', desc: '지금 바로 시작해요!' },
 ]
 
@@ -44,9 +45,9 @@ export interface Routine {
   prevRoutineId?: string
   basedOnSessionId?: string
   changeReasons?: string[]
-  /** 시연용 임시 규칙으로 만들어졌는지. true면 화면에 임시 표시를 한다. */
   /** 1회차부터 목표량을 몇 번 올렸는지. 난이도 표시에만 쓰는 화면 값이라 서버 계약에는 없다. 없으면 0 */
   difficultyStep?: number
+  /** 시연용 임시 규칙으로 만들어졌는지. true면 화면에 임시 표시를 한다. */
   provisional: boolean
   /** 서버 추천을 받지 못해 규칙 기반 추천(lib/recommend)으로 대신 만들었는지. 이 루틴의 기록은 서버에 저장되지 않는다. */
   isFallback?: boolean
