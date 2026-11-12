@@ -8,9 +8,9 @@
 //   선셋 공개 방은 서버에 아직 방이 없어서(정원 5명 방 하나뿐) 로컬(BroadcastChannel)을 쓴다.
 
 import type { Profile, Routine, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { ProfileService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
+import type { AdminService, ProfileService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
-import { readJson, uid, writeJson } from '../local/storage'
+import { clearAll, readJson, uid, writeJson } from '../local/storage'
 import { localRealtime } from '../local/realtime'
 import { DEMO_ROOM_ID } from '../../store/app'
 import { ApiError, request, WS_URL } from './client'
@@ -389,4 +389,28 @@ const realtime: RealtimeService = {
   },
 }
 
-export const httpServices: Services = { profile, routine, record, team, realtime }
+// ───── 운영 화면 ─────
+
+const admin: AdminService = {
+  backend: 'http',
+  async listRooms() {
+    const rooms = await request<RoomResponse[]>('/api/rooms')
+    return Promise.all(
+      rooms.map(async (room) => {
+        const xp = await fetchTeamXp(room.teamId).catch(() => null)
+        // 산식 미정이면 수치를 만들지 않는다 (F-WFAMYP)
+        const team = !xp
+          ? null
+          : !xp.formulaDecided
+            ? noTeamXp(String(room.teamId))
+            : { teamId: String(xp.teamId), gainedXp: null, totalXp: xp.totalXp, level: xp.level, nextLevelXp: xp.nextLevelXp }
+        return { roomId: String(room.roomId), name: room.name, capacity: room.capacity, teamName: room.teamName, team }
+      }),
+    )
+  },
+  async clearDevice() {
+    clearAll()
+  },
+}
+
+export const httpServices: Services = { admin, profile, routine, record, team, realtime }
