@@ -1,6 +1,7 @@
 // 팀 백엔드 운동방 실시간 연결 (/ws, 브라우저 기본 WebSocket + JSON). 다른 PC끼리 같은 방에서 서로 보인다.
 // 메시지 형식은 BE docs/실시간_메시지_형식.md, 관절 좌표 형식은 docs/동작정보_형식.md 를 따른다.
-// - 입장: REST 입장(POST /api/rooms/{id}/enter) → 연결 → JOIN → ROOM_SNAPSHOT
+// - 친구 운동방 입장: REST 입장(POST /api/rooms/{id}/enter) → 연결 → JOIN { roomId } → ROOM_SNAPSHOT
+// - 공개 파티(선셋) 입장: REST 입장 없이 연결 → JOIN { partyId } → ROOM_SNAPSHOT. 정원 없음, 열려 있을 때만 입장된다
 // - 끊기면 같은 토큰으로 다시 JOIN 한다. 서버가 30초 동안 자리를 남겨 두고 진행 상태도 유지한다.
 // - 카메라 영상은 보내지 않는다. 관절 좌표(POSE)만 보내고, 서버는 저장하지 않고 중계만 한다.
 
@@ -8,7 +9,7 @@ import type { CheerEvent, Participant, PoseFrame, Profile } from '../../types/do
 import type { ConnectionState, JoinResult, RealtimeService, RoomConnection } from '../ports'
 import { WS_URL } from './client'
 import { fromReactionCode, fromRtLandmarks, fromRtParticipant, fromRtStatus, toReactionCode, toRtLandmarks, toRtStatus } from './mappers'
-import type { RtClientMessage, RtServerMessage } from './types'
+import type { RtClientMessage, RtJoinTarget, RtServerMessage } from './types'
 
 /** 연결 후 ROOM_SNAPSHOT까지 기다리는 시간 (서버 JOIN 대기 10초보다 짧게) */
 const JOIN_WAIT_MS = 8000
@@ -25,16 +26,16 @@ const POSE_MIN_INTERVAL_MS = 1000 / 12
 /** 친구 '연결 불안정' 표시(lastSeenAt 기준)를 갱신하는 주기. STALE_PEER_MS보다 짧아야 한다 */
 const REFRESH_MS = 2000
 
-/** 다시 연결해도 소용없는 오류 */
-const FATAL_ERRORS = new Set(['PARTICIPANT_NOT_FOUND', 'ROOM_NOT_FOUND', 'ROOM_FULL'])
+/** 다시 연결해도 소용없는 오류. 공개 파티는 닫힌 뒤 재접속도 거부된다 (이미 하던 운동은 끝까지 할 수 있다) */
+const FATAL_ERRORS = new Set(['PARTICIPANT_NOT_FOUND', 'ROOM_NOT_FOUND', 'ROOM_FULL', 'PUBLIC_PARTY_NOT_FOUND', 'PUBLIC_PARTY_CLOSED'])
 
 type JoinOutcome = 'ok' | 'full' | 'fatal' | 'network'
 
 interface Deps {
   /** 이 브라우저에 보관한 재방문 토큰 */
   getToken(): string | null
-  /** REST 입장을 마치고 서버 운동방 ID를 돌려준다 */
-  enterRoom(token: string): Promise<number>
+  /** JOIN 대상을 정한다. 친구 운동방은 REST 입장까지 마친 뒤 돌려준다 */
+  joinTarget(token: string): Promise<RtJoinTarget>
 }
 
 function parse(data: unknown): RtServerMessage | null {
@@ -189,9 +190,9 @@ export function createWsRealtime(deps: Deps): RealtimeService {
       const connect = async (): Promise<JoinOutcome> => {
         const token = deps.getToken()
         if (!token) return 'fatal'
-        let serverRoomId: number
+        let target: RtJoinTarget
         try {
-          serverRoomId = await deps.enterRoom(token)
+          target = await deps.joinTarget(token)
         } catch {
           return 'network'
         }
@@ -214,7 +215,7 @@ export function createWsRealtime(deps: Deps): RealtimeService {
             socket.close()
           }, JOIN_WAIT_MS)
 
-          socket.onopen = () => socket.send(JSON.stringify({ type: 'JOIN', payload: { token, roomId: serverRoomId } } satisfies RtClientMessage))
+          socket.onopen = () => socket.send(JSON.stringify({ type: 'JOIN', payload: { token, ...target } } satisfies RtClientMessage))
           socket.onmessage = (ev) => {
             const m = parse(ev.data)
             if (!m) return

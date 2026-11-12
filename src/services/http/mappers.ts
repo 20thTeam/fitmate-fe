@@ -6,6 +6,7 @@ import type {
   ApiGoal,
   ExerciseRecordRequest,
   ExerciseRecordResponse,
+  PublicPartyFinishRequest,
   RoutineExerciseResponse,
   RoutineResponse,
   RtParticipantView,
@@ -90,6 +91,26 @@ export function toRecordRequest(e: RoutineExerciseResponse, rec: ExerciseRecord 
     // 시간형은 유효 유지 시간, 횟수형은 실제로 운동한 시간
     actualSeconds: isTimed ? rec.validSeconds : Math.round(rec.durationMs / 1000),
     // 자세 판정 형식이 정해질 때까지 프론트 피드백을 그대로 보낸다
+    postureResult: { postureNotes: rec.postureNotes },
+  }
+}
+
+/** 공개 파티(선셋) 점핑잭 기록을 서버 형식으로 바꾼다. 측정 못 했으면 값을 모두 비운다 (친구 운동방과 같은 규칙) */
+export function toPublicPartyFinishRequest(rec: ExerciseRecord | undefined): PublicPartyFinishRequest {
+  const empty: PublicPartyFinishRequest = {
+    measurementStatus: 'NOT_MEASURED',
+    validCount: null,
+    belowStandardCount: null,
+    undeterminedCount: null,
+    actualSeconds: null,
+    postureResult: null,
+  }
+  if (!rec || rec.measurementStatus !== 'MEASURED') return empty
+  return {
+    ...empty,
+    measurementStatus: 'MEASURED',
+    validCount: rec.validReps,
+    actualSeconds: Math.round(rec.durationMs / 1000),
     postureResult: { postureNotes: rec.postureNotes },
   }
 }

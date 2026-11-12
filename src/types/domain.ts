@@ -73,6 +73,17 @@ export interface ExerciseRecord {
 
 export type SessionKind = 'party' | 'sunset'
 
+/** 공개 운동방(선셋 에어로빅) 운영 상태 (F-DXORMB). 운영 시각은 PM 확정 전 임시값이다. */
+export interface SunsetStatus {
+  isOpen: boolean
+  /** 열려 있으면 이번에 연 시각, 닫혀 있으면 다음 오픈 시각 */
+  nextOpenAt: number
+  /** 열려 있을 때 닫히는 시각. 닫혀 있으면 null */
+  closesAt: number | null
+  /** 서버가 알려 준 지금 참가 인원. 서버 값이 없으면 null (인원을 지어내지 않는다) */
+  participantCount: number | null
+}
+
 /** 한 회차 운동 세션 결과 (F-XXCKUD). */
 export interface WorkoutSession {
   sessionId: string

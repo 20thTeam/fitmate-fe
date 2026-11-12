@@ -49,8 +49,11 @@ export default function Result() {
   const rate = completionRate(session)
   const doneCount = session.records.filter((r) => r.completed).length
 
+  // 공개 운동방 기록은 팀 경험치에 쌓이지 않는다 (서버 공개 파티 규칙)
+  const isSunset = session.kind === 'sunset'
   const teamValue =
-    team === 'loading' ? '…'
+    isSunset ? <span style={{ fontSize: 22 }}>해당 없음</span>
+    : team === 'loading' ? '…'
       : team === 'error' ? '불러오지 못함'
         : team.gainedXp === null ? <span style={{ fontSize: 22 }}>산정 기준 준비 중</span>
           : `+ ${team.gainedXp} XP`
@@ -66,7 +69,7 @@ export default function Result() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 22 }}>
           <StatCard label="총 운동 시간" value={durationLabel(session.activeMs)} />
           <StatCard label="완료한 운동" value={`${doneCount} / ${session.records.length}개`} />
-          <StatCard label="팀 경험치" value={teamValue} sub={typeof team === 'object' && team.gainedXp === null ? '팀 경험치는 기준이 확정되면 실제 기록으로 표시돼요' : undefined} />
+          <StatCard label="팀 경험치" value={teamValue} sub={isSunset ? '공개 운동방 기록은 팀 경험치에 쌓이지 않아요' : typeof team === 'object' && team.gainedXp === null ? '팀 경험치는 기준이 확정되면 실제 기록으로 표시돼요' : undefined} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 34, alignItems: 'start' }}>
