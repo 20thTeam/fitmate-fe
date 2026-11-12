@@ -11,6 +11,7 @@ import type {
   Profile,
   Routine,
   SessionKind,
+  SunsetStatus,
   TeamProgress,
   WorkoutSession,
 } from '../types/domain'
@@ -32,7 +33,7 @@ export interface RoutineService {
 export interface RecordService {
   /**
    * 운동을 시작하며 기록 ID(sessionId)를 받는다.
-   * 같은 루틴으로 진행 중인 기록이 있으면 같은 ID를 돌려준다 (재접속 시 이어 하기).
+   * 같은 루틴(선셋은 진행 중인 공개 파티 기록)이 있으면 같은 ID를 돌려준다 (재접속 시 이어 하기).
    */
   startSession(input: { kind: SessionKind; routineId: string | null }): Promise<string>
   /**
@@ -43,6 +44,11 @@ export interface RecordService {
   getSession(sessionId: string): Promise<WorkoutSession | null>
   /** 본인 기록만 반환 (F-YBENHN) */
   listSessions(userId: string): Promise<WorkoutSession[]>
+}
+
+export interface PublicPartyService {
+  /** 공개 운동방(선셋) 운영 상태 (F-DXORMB). 서버가 답하지 않으면 임시 운영 시각으로 계산한다 */
+  getStatus(): Promise<SunsetStatus>
 }
 
 export interface TeamService {
@@ -97,4 +103,5 @@ export interface Services {
   record: RecordService
   team: TeamService
   realtime: RealtimeService
+  publicParty: PublicPartyService
 }

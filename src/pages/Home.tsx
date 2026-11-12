@@ -5,7 +5,8 @@ import { useApp } from '../store/app'
 import type { WorkoutSession } from '../types/domain'
 import { summarize } from '../lib/stats'
 import { durationLabel } from '../lib/format'
-import { getSunsetStatus, sunsetOpenLabel } from '../lib/sunset'
+import { sunsetOpenLabel } from '../lib/sunset'
+import { useSunsetStatus } from '../hooks/useSunsetStatus'
 import { characterOf } from '../config/characters'
 import Backdrop from '../components/Backdrop'
 import { Logo, ProvisionalBadge } from '../components/ui'
@@ -20,7 +21,7 @@ export default function Home() {
   const lastRoutineId = useApp((s) => s.lastRoutineId)
   const [sessions, setSessions] = useState<WorkoutSession[] | null>(null)
   const [hasError, setHasError] = useState(false)
-  const sunset = getSunsetStatus()
+  const { status: sunset } = useSunsetStatus()
 
   useEffect(() => {
     services.record
@@ -60,6 +61,8 @@ export default function Home() {
               </div>
               <h2 className="t-h2">선셋 에어로빅</h2>
               <p className="t-small t-soft" style={{ lineHeight: 1.6 }}>{sunsetOpenLabel()}</p>
+              {/* 인원은 서버가 알려 줄 때만 보여준다 */}
+              {sunset.isOpen && sunset.participantCount !== null && <p className="t-small">지금 {sunset.participantCount}명 참가 중</p>}
               <span style={{ alignSelf: 'flex-start' }}><ProvisionalBadge>운영 시각 임시</ProvisionalBadge></span>
               <button className="btn btn-primary" onClick={() => nav('/sunset')}>{sunset.isOpen ? '공개 운동방 입장하기' : '운동방 미리보기'}</button>
             </section>

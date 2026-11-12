@@ -1,8 +1,11 @@
-// 팀 백엔드 API 형식 (Swagger /v3/api-docs 기준, 2026-11-11 확인). BE와 정한 형식을 그대로 옮겨 적는다.
+// 팀 백엔드 API 형식 (Swagger /v3/api-docs 기준, 2026-11-12 확인). BE와 정한 형식을 그대로 옮겨 적는다.
+// 공개 파티 오픈 상태(GET /api/public-parties/current)와 실시간 partyId 입장은 BE main 코드 기준이다 (2026-11-12 배포 서버에는 아직 없음).
 
 export type ApiGoal = 'WEIGHT_LOSS' | 'POSTURE' | 'STRENGTH' | 'STAMINA'
 export type ApiMeasureType = 'COUNT' | 'TIME'
 export type ApiMeasurementStatus = 'MEASURED' | 'NOT_MEASURED'
+/** ROUTINE 루틴 운동(친구 운동방), PUBLIC_PARTY 공개 파티(선셋) */
+export type ApiWorkoutKind = 'ROUTINE' | 'PUBLIC_PARTY'
 
 export interface ParticipantCreateResponse {
   participantId: number
@@ -75,7 +78,8 @@ export interface ExerciseRecordRequest {
 
 export interface ExerciseRecordResponse {
   recordId: number
-  routineExerciseId: number
+  /** 공개 파티 기록은 null */
+  routineExerciseId: number | null
   exerciseCode: string
   exerciseName: string
   measureType: ApiMeasureType
@@ -90,7 +94,10 @@ export interface ExerciseRecordResponse {
 
 export interface WorkoutResponse {
   workoutId: number
+  kind: ApiWorkoutKind
+  /** 공개 파티면 null */
   routineId: number | null
+  /** 입장 전이거나 공개 파티면 null */
   roomId: number | null
   status: 'IN_PROGRESS' | 'FINISHED'
   /** 시간대 없는 서버 시각 (KST) */
@@ -117,10 +124,12 @@ export interface WorkoutResultResponse {
 /** 내 성장 기록 (GET /api/participants/me/history). 종료한 운동만, 최근 종료 순 */
 export interface HistoryWorkoutResponse {
   workoutId: number
-  routineId: number
-  roundNo: number
-  goal: ApiGoal
-  goalName: string
+  kind: ApiWorkoutKind
+  // 아래 넷은 공개 파티면 null
+  routineId: number | null
+  roundNo: number | null
+  goal: ApiGoal | null
+  goalName: string | null
   /** 시간대 없는 서버 시각 (KST) */
   startedAt: string
   finishedAt: string
@@ -151,6 +160,33 @@ export interface HistoryResponse {
     totalEarnedXp: number | null
   }
   workouts: HistoryWorkoutResponse[]
+}
+
+/** 공개 파티 운동 종료 (POST /api/public-parties/workouts/{id}/finish). 본인 점핑잭 기록 하나 */
+export interface PublicPartyFinishRequest {
+  measurementStatus: ApiMeasurementStatus
+  /** 측정됨이면 필수. 미측정은 null (0으로 보내지 않는다) */
+  validCount: number | null
+  belowStandardCount: number | null
+  undeterminedCount: number | null
+  /** 일시정지를 뺀 실제 운동 시간(초). 모르면 null */
+  actualSeconds: number | null
+  /** 형식 미정이라 프론트 자세 피드백을 그대로 담는다. 미측정은 null */
+  postureResult: unknown
+}
+
+/** 공개 파티 오픈 상태 (GET /api/public-parties/current) */
+export interface PublicPartyResponse {
+  /** 실시간 JOIN의 partyId */
+  partyId: number
+  name: string
+  status: 'OPEN' | 'CLOSED'
+  /** 열려 있으면 이번에 연 시각, 닫혀 있으면 다음에 여는 시각 (오프셋 포함, 예: 2026-11-11T22:00:00+09:00) */
+  opensAt: string
+  /** opensAt 구간이 닫히는 시각 */
+  closesAt: string
+  /** 지금 실시간 방에 있는 인원 (재접속 대기 포함) */
+  participantCount: number
 }
 
 export interface TeamXpResponse {
@@ -196,9 +232,10 @@ export interface RtErrorPayload {
   closed: boolean
 }
 
-/** 서버 → 클라이언트 공통 봉투 */
-export type RtServerMessage = { roomId: number | null; participantId: number | null; sentAt: string } & (
-  | { type: 'ROOM_SNAPSHOT'; payload: { capacity: number; participants: RtParticipantView[] } }
+/** 서버 → 클라이언트 공통 봉투. 친구 운동방이면 roomId, 공개 파티면 partyId만 채워진다 */
+export type RtServerMessage = { roomId: number | null; partyId?: number | null; participantId: number | null; sentAt: string } & (
+  /** 공개 파티는 정원이 없어 capacity가 null */
+  | { type: 'ROOM_SNAPSHOT'; payload: { capacity: number | null; participants: RtParticipantView[] } }
   | { type: 'PARTICIPANT_JOINED'; payload: RtParticipantView }
   | { type: 'PARTICIPANT_LEFT'; payload: { reason: 'LEFT' | 'TIMEOUT' } }
   | { type: 'PARTICIPANT_STATUS'; payload: RtStatusPayload }
@@ -209,9 +246,12 @@ export type RtServerMessage = { roomId: number | null; participantId: number | n
   | { type: 'ERROR'; payload: RtErrorPayload }
 )
 
+/** JOIN 대상. 친구 운동방(REST 입장 필요)과 공개 파티(REST 입장 없음) 중 하나만 보낸다 */
+export type RtJoinTarget = { roomId: number } | { partyId: number }
+
 /** 클라이언트 → 서버 */
 export type RtClientMessage =
-  | { type: 'JOIN'; payload: { token: string; roomId: number } }
+  | { type: 'JOIN'; payload: { token: string } & RtJoinTarget }
   | { type: 'STATUS'; payload: RtStatusPayload }
   | { type: 'POSE'; payload: { landmarks: number[][] } }
   | { type: 'CHEER'; payload: RtCheerPayload }

@@ -3,10 +3,11 @@
 // 서로 다른 PC 연결은 팀 백엔드(WebSocket 등)가 붙어야 한다.
 
 import type { GoalId, Profile, Routine, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { ProfileService, RecordService, RoutineService, Services, TeamService } from '../ports'
+import type { ProfileService, PublicPartyService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
+import { getSunsetStatus } from '../../lib/sunset'
 
 const KEY = {
   profile: 'fitmate.profile',
@@ -82,4 +83,10 @@ const team: TeamService = {
   },
 }
 
-export const localServices: Services = { profile, routine, record, team, realtime: localRealtime }
+const publicParty: PublicPartyService = {
+  async getStatus() {
+    return getSunsetStatus()
+  },
+}
+
+export const localServices: Services = { profile, routine, record, team, realtime: localRealtime, publicParty }
