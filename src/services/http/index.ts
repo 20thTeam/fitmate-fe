@@ -10,9 +10,9 @@
 // - 실시간: 친구 운동방은 서버 웹소켓(/ws)으로 다른 PC와 연결한다(http/realtime.ts).
 
 import type { ExerciseRecord, Profile, Routine, SunsetStatus, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
+import type { AdminService, ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
-import { readJson, uid, writeJson } from '../local/storage'
+import { clearAll, readJson, uid, writeJson } from '../local/storage'
 import { localRealtime } from '../local/realtime'
 import { DEMO_ROOM_ID, SUNSET_ROOM_ID } from '../../store/app'
 import { SUNSET_EXERCISE } from '../../config/provisional'
@@ -491,4 +491,29 @@ const publicParty: PublicPartyService = {
   },
 }
 
-export const httpServices: Services = { profile, routine, record, team, realtime, publicParty }
+
+// ───── 운영 화면 ─────
+
+const admin: AdminService = {
+  backend: 'http',
+  async listRooms() {
+    const rooms = await request<RoomResponse[]>('/api/rooms')
+    return Promise.all(
+      rooms.map(async (room) => {
+        const xp = await fetchTeamXp(room.teamId).catch(() => null)
+        // 산식 미정이면 수치를 만들지 않는다 (F-WFAMYP)
+        const team = !xp
+          ? null
+          : !xp.formulaDecided
+            ? noTeamXp(String(room.teamId))
+            : { teamId: String(xp.teamId), gainedXp: null, totalXp: xp.totalXp, level: xp.level, nextLevelXp: xp.nextLevelXp }
+        return { roomId: String(room.roomId), name: room.name, capacity: room.capacity, teamName: room.teamName, team }
+      }),
+    )
+  },
+  async clearDevice() {
+    clearAll()
+  },
+}
+
+export const httpServices: Services = { admin, profile, routine, record, team, realtime, publicParty }

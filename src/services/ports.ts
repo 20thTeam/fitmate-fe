@@ -97,7 +97,30 @@ export interface RealtimeService {
   join(roomId: string, me: Profile, options: JoinOptions): Promise<JoinResult>
 }
 
+/** 운영 화면(/admin)에 보여줄 서버 운동방 한 개 */
+export interface AdminRoom {
+  roomId: string
+  name: string
+  capacity: number
+  teamName: string
+  /** 팀 경험치. 조회에 실패하면 null. 산식 미정이면 안의 값이 null (F-WFAMYP) */
+  team: TeamProgress | null
+}
+
+/**
+ * 운영 화면(/admin)용. manyfast 기획에 없는 화면이라 기능 ID가 없다.
+ * 서버에 운영용 API(전체 참가자·전체 기록·접속자·초기화)가 아직 없어서 지금 있는 공개 API만 쓴다.
+ */
+export interface AdminService {
+  readonly backend: 'local' | 'http'
+  /** 서버 운동방과 팀 경험치. local은 서버 방이 없어서 빈 배열 */
+  listRooms(): Promise<AdminRoom[]>
+  /** 이 브라우저에 보관한 참가자·루틴·기록을 지운다. 서버 데이터는 그대로 남는다 */
+  clearDevice(): Promise<void>
+}
+
 export interface Services {
+  admin: AdminService
   profile: ProfileService
   routine: RoutineService
   record: RecordService
