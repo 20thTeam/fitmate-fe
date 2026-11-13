@@ -90,6 +90,17 @@ export interface SunsetStatus {
   participantCount: number | null
 }
 
+/**
+ * 친구 운동방 하나 (F-STRTHT). 방마다 실시간 연결과 참가자 목록이 따로다.
+ * 시연 당일 여러 팀이 동시에 쓰도록 방을 여러 개 둔다.
+ */
+export interface FriendRoom {
+  roomId: string
+  name: string
+  /** 정원. 친구 파티는 5명 (PARTY_MAX) */
+  capacity: number
+}
+
 /** 한 회차 운동 세션 결과 (F-XXCKUD). */
 export interface WorkoutSession {
   sessionId: string

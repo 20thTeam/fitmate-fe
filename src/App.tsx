@@ -27,6 +27,20 @@ function RoutineRedirect() {
   return <Navigate to={`/room/${routineId}`} replace />
 }
 
+/**
+ * 친구 초대 링크 (/join/:roomId, 이슈 #40). 받은 방을 기억해 두고 친구 운동방으로 보낸다.
+ * 프로필이 없으면 프로필 설정 → 목표 선택을 거친 뒤 그 방으로 들어간다.
+ */
+function JoinRedirect() {
+  const { roomId = '' } = useParams()
+  const setInvitedRoomId = useApp((s) => s.setInvitedRoomId)
+  const lastRoutineId = useApp((s) => s.lastRoutineId)
+  useEffect(() => {
+    if (roomId) setInvitedRoomId(roomId)
+  }, [roomId, setInvitedRoomId])
+  return <Navigate to={lastRoutineId ? `/room/${lastRoutineId}?room=${encodeURIComponent(roomId)}` : '/goal'} replace />
+}
+
 // 운동 중 이탈 확인(useBlocker)을 쓰려고 데이터 라우터로 만든다 (F-SZCKIV)
 const router = createBrowserRouter([
   { path: '/', element: <Landing /> },
@@ -35,6 +49,7 @@ const router = createBrowserRouter([
   { path: '/goal', element: guard(<GoalSelect />) },
   { path: '/routine/:routineId', element: <RoutineRedirect /> },
   { path: '/room/:routineId', element: guard(<PartyRoom />) },
+  { path: '/join/:roomId', element: <JoinRedirect /> },
   { path: '/result/:sessionId', element: guard(<Result />) },
   { path: '/history', element: guard(<History />) },
   { path: '/sunset', element: guard(<Sunset />) },

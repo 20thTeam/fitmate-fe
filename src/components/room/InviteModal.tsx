@@ -1,5 +1,5 @@
 // 친구 초대 창 (Figma: '친구를 초대해보세요!').
-// 시연 범위는 지정된 운동방 하나라서(PL-MLHPJO) 링크로 들어온 친구가 같은 방에 모인다.
+// 초대 링크에 지금 방 ID를 담는다(/join/:roomId). 링크로 들어온 친구는 프로필·목표 선택을 거쳐 같은 방에 들어온다 (이슈 #40).
 // 닉네임 검색은 친구 목록 API가 생기면 연결한다.
 import { useState } from 'react'
 import { Modal } from '../ui'
@@ -8,10 +8,10 @@ import linkIcon from '../../assets/icons/link.png'
 
 type Notice = { tone: 'ok' | 'error'; text: string } | null
 
-export default function InviteModal({ onClose }: { onClose: () => void }) {
+export default function InviteModal({ roomId, onClose }: { roomId: string; onClose: () => void }) {
   const [keyword, setKeyword] = useState('')
   const [notice, setNotice] = useState<Notice>(null)
-  const inviteUrl = `${location.origin}/`
+  const inviteUrl = `${location.origin}/join/${encodeURIComponent(roomId)}`
 
   const handleSearch = () => {
     if (!keyword.trim()) return

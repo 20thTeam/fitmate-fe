@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { services } from '../services'
-import { DEMO_ROOM_ID, useApp } from '../store/app'
-import { goalLabel, type Participant, type Profile, type Routine, type WorkoutSession } from '../types/domain'
+import { useApp } from '../store/app'
+import { goalLabel, type FriendRoom, type Participant, type Profile, type Routine, type WorkoutSession } from '../types/domain'
 import { PARTY_MAX, PROVISIONAL_REST_SECONDS, provisionalDifficulty } from '../config/provisional'
 import { guideOf, ROUTINE_THUMB } from '../config/exercises'
 import { amountLabel, shortAmountLabel } from '../lib/format'
@@ -25,6 +25,7 @@ import InviteModal from '../components/room/InviteModal'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
 import ConnectionBanner from '../components/room/ConnectionBanner'
+import RoomGate, { type RoomActions } from '../components/room/RoomGate'
 import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import { canUseWebGL } from '../lib/webgl'
@@ -74,13 +75,21 @@ export default function PartyRoom() {
       />
     )
   }
-  return <Room key={routine.routineId} routine={routine} profile={profile} />
+  // 방은 여러 개다. 어느 방에 들어갈지는 RoomGate가 정한다 (이슈 #40)
+  return (
+    <RoomGate
+      profile={profile}
+      render={(friendRoom, actions) => (
+        <Room key={`${routine.routineId}:${friendRoom.roomId}`} routine={routine} profile={profile} friendRoom={friendRoom} roomActions={actions} />
+      )}
+    />
+  )
 }
 
-function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
+function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine; profile: Profile; friendRoom: FriendRoom; roomActions: RoomActions }) {
   const nav = useNavigate()
   const summary = routine.items.map((i) => i.name).join(' · ')
-  const room = useRoom(DEMO_ROOM_ID, profile, {
+  const room = useRoom(friendRoom.roomId, profile, {
     maxParticipants: PARTY_MAX,
     initial: { goal: routine.goal, routineSummary: summary, status: 'waiting' },
   })
@@ -156,10 +165,15 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
     return () => clearTimeout(t)
   }, [phase, isEnterReady]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 입장에 성공한 방을 기억해서 다음에도 이 방으로 바로 들어간다 (이슈 #40)
+  useEffect(() => {
+    if (room.state === 'joined') services.rooms.remember(profile.userId, friendRoom.roomId).catch(() => {})
+  }, [room.state, profile.userId, friendRoom.roomId])
+
   const startSession = () => {
     setHasStartError(false)
     services.record
-      .startSession({ kind: 'party', routineId: routine.routineId })
+      .startSession({ kind: 'party', routineId: routine.routineId, roomId: friendRoom.roomId })
       .then(setSessionId)
       .catch(() => setHasStartError(true))
   }
@@ -204,7 +218,7 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
       sessionId,
       kind: 'party',
       userId: profile.userId,
-      roomId: DEMO_ROOM_ID,
+      roomId: friendRoom.roomId,
       routineId: routine.routineId,
       round: routine.round,
       goal: routine.goal,
@@ -238,16 +252,26 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
     return (
       <CenterMessage
         title={`운동방이 가득 찼어요 (최대 ${PARTY_MAX}명)`}
-        desc="친구가 나간 뒤 다시 시도해 주세요."
+        desc={`'${friendRoom.name}'에 자리가 없어요. 친구가 나간 뒤 다시 시도하거나 다른 방에 들어가 주세요.`}
         action={<>
           <button className="btn btn-secondary" onClick={() => nav('/home')}>홈으로</button>
+          <button className="btn btn-secondary" onClick={roomActions.pick}>다른 방 고르기</button>
           <button className="btn btn-primary" onClick={room.retry}>다시 시도</button>
         </>}
       />
     )
   }
   if (room.state === 'network') {
-    return <CenterMessage title="운동방에 연결할 수 없어요" desc="네트워크를 확인한 뒤 다시 시도해 주세요." action={<button className="btn btn-primary" onClick={room.retry}>다시 시도</button>} />
+    return (
+      <CenterMessage
+        title="운동방에 연결할 수 없어요"
+        desc="네트워크를 확인한 뒤 다시 시도해 주세요."
+        action={<>
+          <button className="btn btn-secondary" onClick={roomActions.pick}>다른 방 고르기</button>
+          <button className="btn btn-primary" onClick={room.retry}>다시 시도</button>
+        </>}
+      />
+    )
   }
   if (!item || !record) return null
 
@@ -280,10 +304,18 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
       onCheer={handleCheer}
       emptyText="아직 친구가 없어요. 혼자 시작해도 되고, 친구가 들어오면 바로 보여요."
       footer={phase === 'lobby' && (
-        <button className="btn btn-dark btn-sm btn-block" style={{ justifyContent: 'space-between', marginTop: 4 }} onClick={() => setIsInviteOpen(true)}>
-          <span className="row" style={{ gap: 8 }}><img src={userAddIcon} alt="" width={16} height={16} />친구 초대하기</span>
-          <span aria-hidden>&gt;</span>
-        </button>
+        <>
+          <button className="btn btn-dark btn-sm btn-block" style={{ justifyContent: 'space-between', marginTop: 4 }} onClick={() => setIsInviteOpen(true)}>
+            <span className="row" style={{ gap: 8 }}><img src={userAddIcon} alt="" width={16} height={16} />친구 초대하기</span>
+            <span aria-hidden>&gt;</span>
+          </button>
+          {/* 방 바꾸기·나가기 (이슈 #40). 운동 중에는 이탈 확인 흐름이 따로 있어서 대기실에서만 보여준다 */}
+          <p className="t-xs" style={{ color: 'var(--c-text-dim)', marginTop: 6, wordBreak: 'break-all' }}>지금 방: {friendRoom.name}</p>
+          <div className="row" style={{ gap: 6 }}>
+            <button className="btn btn-dark btn-sm" style={{ flex: 1 }} onClick={roomActions.pick}>다른 방으로</button>
+            <button className="btn btn-dark btn-sm" style={{ flex: 1 }} onClick={roomActions.leave}>방 나가기</button>
+          </div>
+        </>
       )}
     />
   )
@@ -408,7 +440,7 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
         </>
       )}
 
-      {isInviteOpen && <InviteModal onClose={() => setIsInviteOpen(false)} />}
+      {isInviteOpen && <InviteModal roomId={friendRoom.roomId} onClose={() => setIsInviteOpen(false)} />}
       {isGuideOpen && <GuideDialog name={item.name} guide={guideOf(item.exerciseId)} onClose={() => setIsGuideOpen(false)} />}
 
       {isCameraBroken && !isEndConfirmOpen && (

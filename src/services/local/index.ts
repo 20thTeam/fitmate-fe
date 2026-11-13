@@ -8,6 +8,7 @@ import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
 import { localContest } from './contest'
+import { localRooms } from './rooms'
 import { devSunsetOverride, readLocalSunsetMode, sunsetStatusWithMode, writeLocalSunsetMode } from '../../lib/sunset'
 
 const KEY = {
@@ -93,8 +94,10 @@ const publicParty: PublicPartyService = {
 
 const admin: AdminService = {
   backend: 'local',
+  // 이 브라우저에서 만든 친구 운동방. 팀 경험치는 산식 미정이라 만들지 않는다 (F-WFAMYP)
   async listRooms() {
-    return []
+    const rooms = await localRooms.list()
+    return Promise.all(rooms.map(async (r) => ({ roomId: r.roomId, name: r.name, capacity: r.capacity, teamName: r.name, team: await team.get(r.roomId) })))
   },
   async clearDevice() {
     clearAll()
@@ -110,4 +113,4 @@ const admin: AdminService = {
   },
 }
 
-export const localServices: Services = { admin, contest: localContest, profile, routine, record, team, realtime: localRealtime, publicParty }
+export const localServices: Services = { admin, contest: localContest, profile, routine, record, team, realtime: localRealtime, publicParty, rooms: localRooms }

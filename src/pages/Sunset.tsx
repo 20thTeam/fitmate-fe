@@ -148,13 +148,13 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
   const handleCameraConfirmed = () => {
     setEnterStartedAt(Date.now())
     setPhase('entering')
-    if (!sessionId) services.record.startSession({ kind: 'sunset', routineId: null }).then(setSessionId).catch(() => {})
+    if (!sessionId) services.record.startSession({ kind: 'sunset', routineId: null, roomId: null }).then(setSessionId).catch(() => {})
   }
 
   const finish = async () => {
     setIsSaving(true)
     const result = workout.finalize()
-    const id = sessionId ?? (await services.record.startSession({ kind: 'sunset', routineId: null }).catch(() => null))
+    const id = sessionId ?? (await services.record.startSession({ kind: 'sunset', routineId: null, roomId: null }).catch(() => null))
     if (!id) {
       setIsSaving(false)
       setHasSaveError(true)
