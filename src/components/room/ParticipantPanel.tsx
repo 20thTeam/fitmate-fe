@@ -96,3 +96,55 @@ export function OnlineCount({ participants, selfId }: { participants: Participan
     </span>
   )
 }
+
+/** 짧은 상태 (가로 카드용). 횟수는 따로 크게 보여준다 */
+function shortStatus(p: Participant, tone: Tone) {
+  if (tone === 'offline') return '연결 불안정'
+  return p.currentExercise && p.status === 'exercising' ? p.currentExercise : STATUS_LABEL[p.status]
+}
+
+interface StripProps {
+  participants: Participant[]
+  selfId: string
+  maxShown?: number
+  onCheer?: (p: Participant) => void
+  emptyText: string
+}
+
+/**
+ * 운동 중 하단 '친구 현황' 가로 카드 (F-WJAOCO, F-HEIEZC).
+ * 2m 떨어져서 보므로 이름·횟수를 크게 쓴다. 나는 이미 왼쪽 패널에 있어서 빼고 보여준다.
+ */
+export function FriendStrip({ participants, selfId, maxShown = 4, onCheer, emptyText }: StripProps) {
+  const others = participants.filter((p) => p.userId !== selfId)
+  const shown = others.slice(0, maxShown)
+  const hidden = others.length - shown.length
+  if (others.length === 0) return <p className="friend-empty">{emptyText}</p>
+
+  return (
+    <ul className="list-plain friend-strip">
+      {shown.map((p) => {
+        const tone = toneOf(p, false)
+        const reps = tone !== 'offline' && p.status === 'exercising' && p.validReps != null ? p.validReps : null
+        return (
+          <li key={p.userId}>
+            <button
+              className={`friend-card ${onCheer ? 'is-clickable' : ''}`}
+              disabled={!onCheer}
+              title={onCheer ? `${p.nickname}님에게 응원 보내기` : undefined}
+              onClick={() => onCheer?.(p)}
+            >
+              <span className="row" style={{ gap: 8, minWidth: 0 }}>
+                <Avatar characterId={p.characterId} name={p.nickname} />
+                <span className="friend-name">{p.nickname}</span>
+              </span>
+              <span className="friend-reps">{reps != null ? <>{reps}<small>회</small></> : '–'}</span>
+              <span className="friend-status"><i className={`dot is-${tone}`} />{shortStatus(p, tone)}</span>
+            </button>
+          </li>
+        )
+      })}
+      {hidden > 0 && <li className="friend-more">+{hidden}명</li>}
+    </ul>
+  )
+}

@@ -14,14 +14,17 @@ import { useWorkout } from '../hooks/useWorkout'
 import { useNow } from '../hooks/useNow'
 import { useToast } from '../hooks/useToast'
 import { useRepCounting } from '../hooks/useRepCounting'
+import { useCoachVoice } from '../hooks/useCoachVoice'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
-import ParticipantPanel from '../components/room/ParticipantPanel'
-import { RoutineOrderPanel, RoutineProgressPanel } from '../components/room/RoutinePanels'
+import ParticipantPanel, { FriendStrip } from '../components/room/ParticipantPanel'
+import { RoutineOrderPanel } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
-import PoseStatus from '../components/room/PoseStatus'
+import CoachBubble from '../components/room/CoachBubble'
+import MyCameraPanel from '../components/room/MyCameraPanel'
+import VoiceToggle from '../components/room/VoiceToggle'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
 import ConnectionBanner from '../components/room/ConnectionBanner'
@@ -90,6 +93,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   const items = useMemo(() => [{ ...SUNSET_EXERCISE, sets: 1 }], [])
   const workout = useWorkout(items)
   const toast = useToast()
+  const voice = useCoachVoice()
 
   const [phase, setPhase] = useState<Phase>('lobby')
   const [enterStartedAt, setEnterStartedAt] = useState(0)
@@ -267,32 +271,39 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
 
       {phase === 'play' && (
         <>
-          <div className="col" style={{ position: 'absolute', right: 20, top: 110, bottom: 220, width: 242, gap: 14 }}>
-            {panel}
-            <RoutineProgressPanel heading="선셋 에어로빅" items={SUNSET_ITEMS} activeIndex={0} guide={guideOf(SUNSET_EXERCISE.exerciseId)} />
-          </div>
+          {/* 선셋은 동작이 하나뿐이고 위쪽에 방 전환 탭이 있어서 진행 바 없이 코치 말풍선만 둔다 */}
+          <MyCameraPanel
+            stream={camera.stream}
+            isCameraOn={camera.isOn}
+            overlay={<canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
+            footer={<VoiceToggle voice={voice} />}
+          />
+          <CoachBubble notes={record.postureNotes} {...counting} isRunning={workout.isRunning} onRetry={counting.retry} onSpeak={voice.speak} />
           <WorkoutHud
             exerciseId={SUNSET_EXERCISE.exerciseId}
             name={SUNSET_EXERCISE.name}
-            desc={guideOf(SUNSET_EXERCISE.exerciseId)}
             meta={`경과 ${clockLabel(workout.elapsedMs(now))}${isClosed ? ' · 운영은 끝났지만 지금 운동은 마칠 수 있어요' : ''}`}
             ring={{ value: record.validReps, unit: '회' }}
-            stream={camera.stream}
-            isCameraOn={camera.isOn}
-            notes={record.postureNotes}
-            next={null}
-            cameraOverlay={<>
-              <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />
-              <PoseStatus {...counting} isRunning={workout.isRunning} onRetry={counting.retry} />
-            </>}
+            friendsTitle={<span className="row between">현재 참가자{isPartial && <span className="t-xs" style={{ color: '#d6e4ff' }}>일부만 표시중</span>}</span>}
+            friends={
+              <FriendStrip
+                participants={room.participants}
+                selfId={profile.userId}
+                maxShown={SUNSET_SHOWN - 1}
+                onCheer={handleCheer}
+                emptyText="지금은 나 혼자 있어요. 다른 참가자가 들어오면 바로 보여요."
+              />
+            }
             controls={<>
-              <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={16} height={16} />자세 가이드 보기</button>
+              <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={18} height={18} />자세 가이드</button>
               {workout.isRunning
                 ? <button className="btn btn-dark btn-sm" onClick={workout.pause}>일시정지</button>
                 : <button className="btn btn-dark btn-sm" disabled={!camera.isOn} onClick={workout.start}>다시 시작</button>}
             </>}
             devTools={import.meta.env.DEV && <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidRep()}>[개발용] 유효 +1회</button>}
-            nextAction={<button className="btn btn-rose btn-sm btn-block" onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>}
+            // 선셋은 동작 하나를 자유롭게 하므로 다음 단계 대신 마치기만 둔다
+            action={<button className="btn btn-brown hud-action" disabled={isSaving} onClick={() => setIsEndConfirmOpen(true)}>운동 마치기<span aria-hidden>&gt;</span></button>}
+            subAction={<span className="hud-sub" style={{ textDecoration: 'none' }}>기록은 마칠 때 저장돼요</span>}
           />
         </>
       )}
