@@ -11,6 +11,7 @@ import Result from './pages/Result'
 import History from './pages/History'
 import Sunset from './pages/Sunset'
 import Admin from './pages/Admin'
+import UnivContest from './pages/UnivContest'
 
 /** 임시 프로필이 없으면 프로필 설정으로 보낸다. */
 function RequireProfile({ children }: { children: ReactNode }) {
@@ -39,6 +40,8 @@ const router = createBrowserRouter([
   { path: '/sunset', element: guard(<Sunset />) },
   // 운영 화면. 기획에 없는 화면이고 메뉴에 링크를 두지 않는다 (암호로 연다)
   { path: '/admin', element: <Admin /> },
+  // 시연 당일 학교 대항 스쿼트 챌린지. 기획에 없는 화면이고, 프로필 없이 누구나 열 수 있다
+  { path: '/univ-contest', element: <UnivContest /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ])
 

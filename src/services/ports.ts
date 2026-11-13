@@ -5,6 +5,8 @@
 
 import type {
   CheerEvent,
+  ContestGame,
+  ContestStandings,
   GoalId,
   Participant,
   PoseFrame,
@@ -119,8 +121,32 @@ export interface AdminService {
   clearDevice(): Promise<void>
 }
 
+/**
+ * 학교 대항 스쿼트 챌린지 (/univ-contest). 노트북 여러 대가 서버의 같은 판에 들어와 동시에 20초 스쿼트를 한다.
+ * manyfast 기획에 없는 시연 당일 이벤트라 기능 ID가 없다. 판 상태는 서버 시각(startAt, serverNow) 기준이다.
+ */
+export interface ContestService {
+  /**
+   * 집계가 저장되는 곳. http 구현은 서버에 챌린지 API가 없으면(404) 이 브라우저 저장으로 바꾼다.
+   * 첫 호출이 끝나기 전에는 'unknown'
+   */
+  storage(): 'server' | 'device' | 'unknown'
+  /** 학교별 누적 횟수와 개인 상위 기록 */
+  getStandings(): Promise<ContestStandings>
+  /** 모집 중인 판에 들어간다. 없거나 가득 찼으면 새 판을 만든다 */
+  joinGame(input: { nickname: string; schoolId: string }): Promise<{ playerId: string; game: ContestGame }>
+  getGame(gameId: string): Promise<ContestGame>
+  /** 누구나 시작할 수 있다. 이미 시작된 판이면 그대로 돌려준다 */
+  startGame(gameId: string, playerId: string): Promise<ContestGame>
+  /** 내 결과. 자세가 한 번도 인식되지 않았으면 reps=null (측정 안 함, 합계에 넣지 않는다) */
+  submitResult(gameId: string, playerId: string, reps: number | null): Promise<ContestGame>
+  /** 시작 전에 판에서 나간다 */
+  leaveGame(gameId: string, playerId: string): Promise<void>
+}
+
 export interface Services {
   admin: AdminService
+  contest: ContestService
   profile: ProfileService
   routine: RoutineService
   record: RecordService
