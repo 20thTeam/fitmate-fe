@@ -15,6 +15,10 @@ export const CONTEST_RULES = {
   topPlayerCount: 5,
   /** 대기·결과를 다시 확인하는 주기 */
   pollMs: 1_000,
+  /** 남은 시간이 이 아래면 화면을 주황으로 바꿔 서두르게 한다 */
+  hurrySeconds: 10,
+  /** 남은 시간이 이 아래면 빨강·깜빡임·매초 알림음 */
+  finalSeconds: 5,
 }
 
 /**
