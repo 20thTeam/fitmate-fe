@@ -15,6 +15,7 @@ import type {
   Routine,
   SessionKind,
   PublicPartyMode,
+  PublicPartySchedule,
   SunsetStatus,
   TeamProgress,
   WorkoutSession,
@@ -133,7 +134,10 @@ export interface AdminRoom {
 /** 운영 화면에 보여줄 공개 운동방 운영 모드와 지금 상태 */
 export interface AdminPublicParty {
   mode: PublicPartyMode
+  /** 운영 시각은 status.schedule */
   status: SunsetStatus
+  /** 서버가 운영 시각을 알려 줬는지. false면 status.schedule은 임시 운영 시각이고 바꿀 수 없다 (#41) */
+  canEditSchedule: boolean
 }
 
 /**
@@ -152,6 +156,8 @@ export interface AdminService {
   getPublicParty(adminKey: string): Promise<AdminPublicParty | null>
   /** 공개 운동방을 시각과 상관없이 열거나 닫는다. AUTO는 운영 시각대로 되돌린다 */
   setPublicPartyMode(mode: PublicPartyMode, adminKey: string): Promise<AdminPublicParty>
+  /** 공개 운동방의 매일 운영 시각을 바꾼다 (#41) */
+  setPublicPartySchedule(schedule: PublicPartySchedule, adminKey: string): Promise<AdminPublicParty>
 }
 
 /**

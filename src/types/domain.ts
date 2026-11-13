@@ -80,6 +80,14 @@ export type SessionKind = 'party' | 'sunset'
  */
 export type PublicPartyMode = 'AUTO' | 'OPEN' | 'CLOSED'
 
+/** 공개 운동방 운영 시각 (한국 시간, 매일). 운영 화면에서 바꾼다 (#41) */
+export interface PublicPartySchedule {
+  /** 여는 시각 'HH:mm' (예: '22:00') */
+  openTime: string
+  /** 여는 시간(분) */
+  durationMin: number
+}
+
 export interface SunsetStatus {
   isOpen: boolean
   /** 열려 있으면 이번에 연 시각, 닫혀 있으면 다음 오픈 시각 */
@@ -88,6 +96,8 @@ export interface SunsetStatus {
   closesAt: number | null
   /** 서버가 알려 준 지금 참가 인원. 서버 값이 없으면 null (인원을 지어내지 않는다) */
   participantCount: number | null
+  /** 매일 운영 시각. 서버가 알려 주지 않으면 임시 운영 시각 */
+  schedule: PublicPartySchedule
 }
 
 /**

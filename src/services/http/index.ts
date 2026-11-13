@@ -11,7 +11,7 @@
 // - 친구 운동방: 서버 방 목록(/api/rooms)에서 고르고, 방 번호로 입장한다. 서버에 방 만들기 API가 없어서 새 방은 만들 수 없다.
 //   마지막 방은 이 브라우저에 기억하고, 기록이 없으면 서버가 아는 내 마지막 입장 방(/api/participants/me roomId)을 쓴다.
 
-import type { ExerciseRecord, FriendRoom, Profile, Routine, SunsetStatus, TeamProgress, WorkoutSession } from '../../types/domain'
+import type { ExerciseRecord, FriendRoom, Profile, PublicPartySchedule, Routine, SunsetStatus, TeamProgress, WorkoutSession } from '../../types/domain'
 import type { AdminPublicParty, AdminService, FriendRoomService, ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from '../local/storage'
@@ -19,7 +19,7 @@ import { localRealtime } from '../local/realtime'
 import { createLastRoomStore } from '../local/rooms'
 import { DEMO_ROOM_ID, SUNSET_ROOM_ID } from '../../store/app'
 import { PARTY_MAX, SUNSET_EXERCISE } from '../../config/provisional'
-import { devSunsetOverride, getSunsetStatus } from '../../lib/sunset'
+import { DEFAULT_SUNSET_SCHEDULE, devSunsetOverride, getSunsetStatus, isValidSchedule } from '../../lib/sunset'
 import { ApiError, request, WS_URL } from './client'
 import { createWsRealtime } from './realtime'
 import { httpContest } from './contest'
@@ -480,19 +480,26 @@ async function fetchPublicParty(): Promise<PublicPartyResponse | null> {
   }
 }
 
+/** 서버가 운영 시각을 알려 주면 그 값, 아니면 null */
+function scheduleOf(p: PublicPartyResponse): PublicPartySchedule | null {
+  if (p.openTime === undefined || p.durationMinutes === undefined) return null
+  const s = { openTime: p.openTime.slice(0, 5), durationMin: p.durationMinutes }
+  return isValidSchedule(s) ? s : null
+}
+
 function toSunsetStatus(p: PublicPartyResponse): SunsetStatus | null {
   const opensAt = Date.parse(p.opensAt)
   // 운영 화면에서 강제로 연 동안은 닫는 시각이 없다
   const closesAt = p.closesAt === null ? null : Date.parse(p.closesAt)
   if (Number.isNaN(opensAt) || (closesAt !== null && Number.isNaN(closesAt))) return null
   const isOpen = p.status === 'OPEN'
-  return { isOpen, nextOpenAt: opensAt, closesAt: isOpen ? closesAt : null, participantCount: p.participantCount }
+  return { isOpen, nextOpenAt: opensAt, closesAt: isOpen ? closesAt : null, participantCount: p.participantCount, schedule: scheduleOf(p) ?? DEFAULT_SUNSET_SCHEDULE }
 }
 
 function toAdminPublicParty(p: AdminPublicPartyResponse): AdminPublicParty {
   const status = toSunsetStatus(p)
   if (!status) throw new ApiError('http', '공개 파티 시각 형식이 올바르지 않아요')
-  return { mode: p.mode, status }
+  return { mode: p.mode, status, canEditSchedule: scheduleOf(p) !== null }
 }
 
 const publicParty: PublicPartyService = {
@@ -583,6 +590,10 @@ const admin: AdminService = {
   },
   async setPublicPartyMode(mode, adminKey) {
     return toAdminPublicParty(await request<AdminPublicPartyResponse>('/api/admin/public-party', { method: 'PUT', body: { mode }, adminKey }))
+  },
+  async setPublicPartySchedule(schedule, adminKey) {
+    const body = { openTime: schedule.openTime, durationMinutes: schedule.durationMin }
+    return toAdminPublicParty(await request<AdminPublicPartyResponse>('/api/admin/public-party/schedule', { method: 'PUT', body, adminKey }))
   },
   async clearDevice() {
     clearAll()

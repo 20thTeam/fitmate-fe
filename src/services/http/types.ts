@@ -187,6 +187,10 @@ export interface PublicPartyResponse {
   closesAt: string | null
   /** 지금 실시간 방에 있는 인원 (재접속 대기 포함) */
   participantCount: number
+  /** 매일 여는 시각 'HH:mm' (한국 시간). 운영 화면에서 바꾼다 (BE 요청 #41, 없는 서버도 있음) */
+  openTime?: string
+  /** 매일 여는 시간(분) (BE 요청 #41) */
+  durationMinutes?: number
 }
 
 /** GET·PUT /api/admin/public-party 응답 (BE 요청 #31). 공개 파티 상태에 운영 모드를 더한다 */

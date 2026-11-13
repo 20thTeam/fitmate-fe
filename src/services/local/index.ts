@@ -9,7 +9,7 @@ import { clearAll, readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
 import { localContest } from './contest'
 import { localRooms } from './rooms'
-import { devSunsetOverride, readLocalSunsetMode, sunsetStatusWithMode, writeLocalSunsetMode } from '../../lib/sunset'
+import { devSunsetOverride, readLocalSunsetMode, readLocalSunsetSchedule, sunsetStatusWithMode, writeLocalSunsetMode, writeLocalSunsetSchedule } from '../../lib/sunset'
 
 const KEY = {
   profile: 'fitmate.profile',
@@ -85,9 +85,15 @@ const team: TeamService = {
   },
 }
 
+function localAdminPublicParty() {
+  const mode = readLocalSunsetMode()
+  return { mode, status: sunsetStatusWithMode(mode, readLocalSunsetSchedule()), canEditSchedule: true }
+}
+
 const publicParty: PublicPartyService = {
   async getStatus() {
-    return devSunsetOverride() ?? sunsetStatusWithMode(readLocalSunsetMode())
+    const schedule = readLocalSunsetSchedule()
+    return devSunsetOverride(Date.now(), schedule) ?? sunsetStatusWithMode(readLocalSunsetMode(), schedule)
   },
 }
 
@@ -104,12 +110,15 @@ const admin: AdminService = {
   },
   needsAdminKey: false,
   async getPublicParty() {
-    const mode = readLocalSunsetMode()
-    return { mode, status: sunsetStatusWithMode(mode) }
+    return localAdminPublicParty()
   },
   async setPublicPartyMode(mode) {
     writeLocalSunsetMode(mode)
-    return { mode, status: sunsetStatusWithMode(mode) }
+    return localAdminPublicParty()
+  },
+  async setPublicPartySchedule(schedule) {
+    writeLocalSunsetSchedule(schedule)
+    return localAdminPublicParty()
   },
 }
 
