@@ -50,6 +50,8 @@ const isMissingApi = (e: unknown) => e instanceof ApiError && e.kind === 'http' 
 
 export const httpContest: ContestService = {
   storage: () => storage,
+  // 서버 챌린지 판 실시간 경로는 BE에 아직 없다 (fitmate-be#34 후속 요청)
+  liveRealtime: () => (storage === 'device' ? localContest.liveRealtime() : null),
   async getStandings() {
     if (storage === 'device') return localContest.getStandings()
     try {

@@ -142,6 +142,11 @@ export interface ContestService {
   submitResult(gameId: string, playerId: string, reps: number | null): Promise<ContestGame>
   /** 시작 전에 판에서 나간다 */
   leaveGame(gameId: string, playerId: string): Promise<void>
+  /**
+   * 판 참가자끼리 관절 좌표·횟수를 주고받는 실시간 연결 (판 하나 = 방 하나, roomId는 gameId).
+   * 서버 저장일 때는 아직 서버에 챌린지 판 실시간 경로가 없어 null. 그때 화면은 내 캐릭터만 내 자세로 움직인다.
+   */
+  liveRealtime(): RealtimeService | null
 }
 
 export interface Services {

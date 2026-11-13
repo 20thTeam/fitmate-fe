@@ -5,6 +5,7 @@ import { CONTEST_RULES } from '../../config/contest'
 import { buildContestStandings, contestStatusAt } from '../../lib/contest'
 import type { ContestGame } from '../../types/domain'
 import type { ContestService } from '../ports'
+import { localRealtime } from './realtime'
 import { readJson, uid, writeJson } from './storage'
 
 const KEY = 'fitmate.contestGames'
@@ -29,6 +30,8 @@ function updateGame(gameId: string, fn: (g: StoredGame) => StoredGame): ContestG
 
 export const localContest: ContestService = {
   storage: () => 'device',
+  // 같은 브라우저 탭끼리만 연결된다 (BroadcastChannel)
+  liveRealtime: () => localRealtime,
   async getStandings() {
     return buildContestStandings(readGames().map(withStatus).filter((g) => g.status === 'FINISHED'))
   },

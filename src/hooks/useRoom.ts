@@ -1,8 +1,8 @@
 // 실시간 운동방 입장·참가자·응원 수신을 묶은 훅. 친구 파티와 선셋이 같이 쓴다.
 // 내 관절 좌표(livePose)를 친구에게 보내고, 받은 친구 좌표는 peerPoses에 써서 3D 캐릭터가 읽게 한다.
 
-import { useEffect, useRef, useState } from 'react'
-import { services, type ConnectionState, type JoinOptions, type RoomConnection } from '../services'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { services, type ConnectionState, type JoinOptions, type RealtimeService, type RoomConnection } from '../services'
 import { CHEER_COOLDOWN_MS, STALE_PEER_MS } from '../config/provisional'
 import type { Participant, Profile } from '../types/domain'
 import { hasFreshLivePose, livePose } from '../lib/pose/livePose'
@@ -16,7 +16,8 @@ const CHEER_TOAST_MS = 2500
 /** 내 관절 좌표를 보내는 간격. 서버 중계 상한(초당 15개)보다 적게 보낸다 */
 const POSE_SEND_MS = 1000 / 12
 
-export function useRoom(roomId: string | null, me: Profile, options: JoinOptions) {
+/** realtime: 친구 파티·선셋은 기본 연결, 학교 대항 챌린지는 판 전용 연결을 넘긴다 */
+export function useRoom(roomId: string | null, me: Profile, options: JoinOptions, realtime: RealtimeService = services.realtime) {
   const [state, setState] = useState<RoomState>('joining')
   const [participants, setParticipants] = useState<Participant[]>([])
   const [cheerToast, setCheerToast] = useState<string | null>(null)
@@ -38,7 +39,7 @@ export function useRoom(roomId: string | null, me: Profile, options: JoinOptions
     let toastTimer: ReturnType<typeof setTimeout> | undefined
     let poseTimer: ReturnType<typeof setInterval> | undefined
 
-    services.realtime
+    realtime
       .join(roomId, me, optionsRef.current)
       .then((res) => {
         if (!life.isAlive) {
@@ -86,7 +87,10 @@ export function useRoom(roomId: string | null, me: Profile, options: JoinOptions
       connectionRef.current = 'connected'
       setConnection('connected')
     }
-  }, [roomId, me, retryKey])
+  }, [roomId, me, retryKey, realtime])
+
+  // 효과(useEffect) 안에서 불러도 매 렌더 다시 실행되지 않게 같은 함수를 돌려준다
+  const updateSelf = useCallback((patch: Parameters<RoomConnection['updateSelf']>[0]) => connRef.current?.updateSelf(patch), [])
 
   /** 연타는 쿨다운으로 막는다 (F-HEIEZC 권장안). 보냈으면 true. */
   const sendCheer = (toUserId: string, reaction = '🔥') => {
@@ -106,7 +110,7 @@ export function useRoom(roomId: string | null, me: Profile, options: JoinOptions
     participants,
     cheerToast,
     sendCheer,
-    updateSelf: (patch: Parameters<RoomConnection['updateSelf']>[0]) => connRef.current?.updateSelf(patch),
+    updateSelf,
     retry: () => {
       setState('joining')
       setRetryKey((k) => k + 1)

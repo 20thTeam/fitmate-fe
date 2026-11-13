@@ -1,6 +1,7 @@
 // 학교 대항 스쿼트 20초 챌린지 (/univ-contest). manyfast 기획에 없는 시연 당일 이벤트 화면이라 기능 ID가 없다.
 // 노트북 4대(1인 1대)가 서버의 같은 판에 들어와, 누가 시작을 누르면 서버 시각 기준으로 동시에 20초 스쿼트를 한다.
 // 횟수는 기존 운동 판정(PL-OEFFCN 임시 기준)으로 세고, 자세가 한 번도 인식되지 않으면 '측정 안 됨'으로 내서 합계에 넣지 않는다.
+// 대기·운동 중에는 친구 운동방과 같은 3D 무대에 판 참가자를 캐릭터로 세운다. 카메라 영상은 보내지 않고 관절 좌표만 주고받는다.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { services } from '../services'
@@ -11,9 +12,13 @@ import { createRepCounter, type CounterEvent, type PoseInput } from '../lib/pose
 import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
 import { usePose } from '../hooks/usePose'
 import { useNow } from '../hooks/useNow'
-import type { ContestGame, ContestStandings } from '../types/domain'
+import { useRoom } from '../hooks/useRoom'
+import { CHARACTERS } from '../config/characters'
+import type { ContestGame, ContestStandings, Participant, ParticipantStatus, Profile } from '../types/domain'
 import Backdrop from '../components/Backdrop'
 import PoseStatus from '../components/room/PoseStatus'
+import Scene from '../components/room/Scene'
+import ParticipantPanel from '../components/room/ParticipantPanel'
 import { CameraPreview, Logo } from '../components/ui'
 
 type Phase = 'board' | 'join' | 'game'
@@ -27,6 +32,8 @@ const NICKNAME_MAX = 10
 const BOARD_REFRESH_MS = 5000
 /** 결과 제출이 실패하면 이 간격으로 다시 보낸다 */
 const SUBMIT_RETRY_MS = 1500
+/** 판에 들어온 순서대로 캐릭터를 나눠 준다. 모든 노트북이 같은 판 순서를 보므로 같은 사람은 어디서나 같은 캐릭터다 */
+const characterIdAt = (index: number) => CHARACTERS[index % CHARACTERS.length].id
 
 export default function UnivContest() {
   const profile = useApp((s) => s.profile)
@@ -143,6 +150,19 @@ export default function UnivContest() {
     if (l) services.contest.leaveGame(l.gameId, l.playerId).catch(() => {})
   }, [])
 
+  // ── 3D 무대: 판 참가자끼리 관절 좌표·횟수를 주고받는다 ──
+  const isStageView = (view === 'lobby' || view === 'play') && !!game
+  // 서버 저장이면 아직 판 실시간 경로가 없어 null (내 캐릭터만 내 자세로 움직인다)
+  const live = isStageView ? services.contest.liveRealtime() : null
+  const me = useMemo<Profile>(() => ({ userId: playerId, nickname: nickname.trim(), characterId: characterIdAt(0) }), [playerId, nickname])
+  const room = useRoom(live && gameId ? `contest-${gameId}` : null, me, { maxParticipants: CONTEST_RULES.maxPlayers, initial: { status: 'waiting' } }, live ?? services.realtime)
+  const isRunningNow = view === 'play' && status === 'RUNNING' && !isTimeUp && !hasSubmitted
+  const myStatus: ParticipantStatus = isRunningNow ? 'exercising' : view === 'play' && status === 'RUNNING' ? 'done' : 'waiting'
+  const { updateSelf, state: roomState } = room
+  useEffect(() => {
+    if (roomState === 'joined') updateSelf({ status: myStatus, validReps: reps })
+  }, [roomState, myStatus, reps, updateSelf])
+
   const join = async () => {
     setIsBusy(true)
     setActionError('')
@@ -187,6 +207,68 @@ export default function UnivContest() {
   }
 
   const storage = services.contest.storage()
+
+  if (isStageView && game) {
+    const stage = stagePeople(game, status, playerId, room.participants, !!live, { status: myStatus, reps }, now)
+    const linkNote = !live
+      ? '다른 참가자 캐릭터 동작은 서버 연결 준비 중이에요. 내 캐릭터만 내 자세로 움직여요.'
+      : room.state === 'full' || room.state === 'network' ? '캐릭터 동작을 주고받지 못했어요. 횟수 집계는 그대로 돼요.' : ''
+    return (
+      <Scene
+        theme="public"
+        view={view === 'play' ? 'front' : 'tour'}
+        screen={<StageScreen view={view} status={status} game={game} serverNow={serverNow} hasSubmitted={hasSubmitted} reps={reps} />}
+        participants={stage.figures}
+        selfId={playerId}
+        maxShown={CONTEST_RULES.maxPlayers}
+      >
+        <Logo isLight />
+        <div className="row center wrap" style={{ position: 'absolute', left: 0, right: 0, top: 28, gap: 8, pointerEvents: 'none' }}>
+          <span className="chip chip-ghost">학교 대항 스쿼트 20초 챌린지</span>
+          {storage === 'device' && <span className="chip chip-provisional">서버 준비 중 · 이 브라우저에만 저장돼요</span>}
+        </div>
+
+        <div className="col" style={{ position: 'absolute', right: 28, top: 90, width: 280, gap: 10 }}>
+          <ParticipantPanel
+            title={<strong>참가자 {game.players.length}/{game.maxPlayers}</strong>}
+            participants={stage.panel}
+            selfId={playerId}
+            maxShown={CONTEST_RULES.maxPlayers}
+          />
+          {linkNote && (
+            <div className="glass col" style={{ gap: 8, padding: 12 }} role="status">
+              <span className="t-xs" style={{ lineHeight: 1.5 }}>{linkNote}</span>
+              {live && <button className="btn btn-dark btn-sm" onClick={room.retry}>다시 연결</button>}
+            </div>
+          )}
+          {import.meta.env.DEV && live && (
+            <p className="t-xs" style={{ color: '#fff' }}>[개발용] 다른 탭에서 /univ-contest로 같은 판에 들어오면 캐릭터가 보여요</p>
+          )}
+        </div>
+
+        <div className="glass col" style={{ position: 'absolute', left: 28, bottom: 28, gap: 8, padding: 12 }}>
+          <CameraPanel camera={camera} pose={pose} isSupported={!!counter} setupHint={counter?.setupHint ?? ''} canvasRef={poseCanvasRef} size="sm" />
+        </div>
+
+        <div className="col center" style={{ position: 'absolute', left: 360, right: 330, bottom: 28, gap: 10 }}>
+          {view === 'lobby' ? (
+            <>
+              {actionError && <p className="glass t-small" role="alert" style={{ padding: '8px 14px' }}>{actionError}</p>}
+              <div className="row center" style={{ gap: 12 }}>
+                <button className="btn btn-secondary" onClick={leave}>나가기</button>
+                <button className="btn btn-plum btn-lg" style={{ minWidth: 200 }} disabled={isBusy} onClick={start}>{isBusy ? '시작하는 중…' : '시작'}</button>
+              </div>
+            </>
+          ) : (
+            <div className="glass col center" style={{ gap: 0, padding: '12px 32px' }}>
+              <span className="t-small">내 스쿼트</span>
+              <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1.1 }} aria-live="polite">{reps}</span>
+            </div>
+          )}
+        </div>
+      </Scene>
+    )
+  }
 
   return (
     <Backdrop theme="public" isDim>
@@ -239,40 +321,6 @@ export default function UnivContest() {
                 {isBusy ? '들어가는 중…' : '판에 들어가기'}
               </button>
             </div>
-          </section>
-        )}
-
-        {view === 'lobby' && game && (
-          <section className="card col" style={{ width: 'min(960px, 100%)', gap: 20 }} aria-label="참가자 대기">
-            <div className="row" style={{ alignItems: 'flex-start', gap: 24 }}>
-              <div className="col" style={{ flex: 1, gap: 12 }}>
-                <h2 className="t-h2">참가자 {game.players.length}/{game.maxPlayers}</h2>
-                <ul className="col" style={{ gap: 8, listStyle: 'none', padding: 0, margin: 0 }}>
-                  {game.players.map((p) => (
-                    <li key={p.playerId} className="row" style={{ justifyContent: 'space-between', padding: '10px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.12)' }}>
-                      <strong>{p.nickname}{p.playerId === playerId && ' (나)'}</strong>
-                      <span className="t-soft">{schoolName(p.schoolId)}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className="t-soft" style={{ lineHeight: 1.5 }}>
-                  모두 카메라에 온몸이 보이게 선 뒤, 아무나 시작을 누르세요. {CONTEST_RULES.countdownMs / 1000}초 뒤 모든 노트북에서 동시에 시작해요.
-                </p>
-              </div>
-              <CameraPanel camera={camera} pose={pose} isSupported={!!counter} setupHint={counter?.setupHint ?? ''} canvasRef={poseCanvasRef} />
-            </div>
-            {actionError && <p className="t-danger" role="alert">{actionError}</p>}
-            <div className="row" style={{ justifyContent: 'space-between' }}>
-              <button className="btn btn-secondary" onClick={leave}>나가기</button>
-              <button className="btn btn-primary btn-lg" disabled={isBusy} onClick={start}>{isBusy ? '시작하는 중…' : '시작'}</button>
-            </div>
-          </section>
-        )}
-
-        {view === 'play' && game && (
-          <section className="card col center" style={{ width: 'min(960px, 100%)', gap: 16 }} aria-label="운동 중">
-            <PlayHeader status={status} hasSubmitted={hasSubmitted} game={game} serverNow={serverNow} reps={reps} />
-            <CameraPanel camera={camera} pose={pose} isSupported={!!counter} setupHint={counter?.setupHint ?? ''} canvasRef={poseCanvasRef} isLarge />
           </section>
         )}
 
@@ -353,11 +401,11 @@ interface CameraPanelProps {
   isSupported: boolean
   setupHint: string
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  isLarge?: boolean
+  size?: 'sm' | 'md'
 }
 
-function CameraPanel({ camera, pose, isSupported, setupHint, canvasRef, isLarge = false }: CameraPanelProps) {
-  const size = isLarge ? { width: 640, height: 400 } : { width: 400, height: 300 }
+function CameraPanel({ camera, pose, isSupported, setupHint, canvasRef, size: sizeName = 'md' }: CameraPanelProps) {
+  const size = sizeName === 'sm' ? { width: 300, height: 225 } : { width: 400, height: 300 }
   const isBroken = camera.state === 'denied' || camera.state === 'unavailable'
   return (
     <div className="col" style={{ gap: 8, width: size.width }}>
@@ -382,36 +430,70 @@ function CameraPanel({ camera, pose, isSupported, setupHint, canvasRef, isLarge 
   )
 }
 
-function PlayHeader({ status, hasSubmitted, game, serverNow, reps }: { status: string; hasSubmitted: boolean; game: ContestGame; serverNow: number; reps: number }) {
+/** 무대 캐릭터와 오른쪽 패널에 쓸 참가자. 판 순서(=캐릭터)는 서버 판 기준이고, 상태·횟수는 실시간으로 받은 값을 쓴다 */
+function stagePeople(game: ContestGame, gameStatus: string, playerId: string, liveList: Participant[], hasLink: boolean, mine: { status: ParticipantStatus; reps: number }, now: number) {
+  const isRunning = gameStatus === 'RUNNING'
+  const figures: Participant[] = game.players.map((p, i) => {
+    const isSelf = p.playerId === playerId
+    const live = liveList.find((l) => l.userId === p.playerId)
+    return {
+      userId: p.playerId,
+      nickname: p.nickname,
+      characterId: characterIdAt(i),
+      // 실시간 연결이 없으면 판 상태만 반영한다 (운동 중이면 통통 튀고, 자세는 따라 하지 않는다)
+      status: isSelf ? mine.status : live?.status ?? (isRunning ? 'exercising' : 'waiting'),
+      validReps: isSelf ? mine.reps : live?.validReps ?? p.reps ?? undefined,
+      // 연결은 있는데 이 사람만 안 보이면 '연결 불안정'으로 보이게 오래된 시각을 둔다
+      lastSeenAt: isSelf || !hasLink ? now : live?.lastSeenAt ?? 0,
+    }
+  })
+  const panel = figures.map((f) => {
+    const school = game.players.find((p) => p.playerId === f.userId)?.schoolId ?? ''
+    return { ...f, nickname: `${f.nickname} · ${schoolName(school)}` }
+  })
+  return { figures, panel }
+}
+
+const SCREEN_TEXT = '#5a4757'
+
+/** 3D 스크린 안 내용 (640×313 px 판에 그려서 원근으로 늘린다) */
+function StageScreen({ view, status, game, serverNow, hasSubmitted, reps }: { view: string; status: string; game: ContestGame; serverNow: number; hasSubmitted: boolean; reps: number }) {
+  // 캐릭터 머리와 이름표가 스크린 아래쪽을 가려서 글자는 위쪽에 모은다
+  const box = { color: SCREEN_TEXT, gap: 6, width: '100%', height: '100%', padding: '26px 24px', textAlign: 'center' as const, justifyContent: 'flex-start' }
+  if (view === 'lobby') {
+    return (
+      <div className="col center" style={box}>
+        <strong style={{ fontSize: 34 }}>참가자 {game.players.length}/{game.maxPlayers}명 모였어요</strong>
+        <span style={{ fontSize: 17, lineHeight: 1.5 }}>
+          온몸이 카메라에 보이게 선 뒤 아무나 '시작'을 누르세요.<br />
+          {CONTEST_RULES.countdownMs / 1000}초 뒤 모든 노트북에서 동시에 20초 스쿼트를 시작해요.
+        </span>
+      </div>
+    )
+  }
   const startAt = game.startAt ?? serverNow
   if (status === 'COUNTDOWN') {
     return (
-      <div className="col center" style={{ gap: 4 }} role="status">
-        <span className="t-h3">곧 시작해요</span>
-        <span style={{ fontSize: 96, fontWeight: 800, lineHeight: 1 }}>{Math.max(1, Math.ceil((startAt - serverNow) / 1000))}</span>
+      <div className="col center" style={box} role="status">
+        <strong style={{ fontSize: 26 }}>곧 시작해요</strong>
+        <span style={{ fontSize: 150, fontWeight: 800, lineHeight: 1 }}>{Math.max(1, Math.ceil((startAt - serverNow) / 1000))}</span>
       </div>
     )
   }
   const leftMs = Math.max(0, startAt + game.durationMs - serverNow)
   if (leftMs > 0 && !hasSubmitted) {
     return (
-      <div className="row center" style={{ gap: 48 }}>
-        <div className="col center" style={{ gap: 0 }}>
-          <span className="t-soft">남은 시간</span>
-          <span style={{ fontSize: 72, fontWeight: 800, lineHeight: 1 }}>{Math.ceil(leftMs / 1000)}</span>
-        </div>
-        <div className="col center" style={{ gap: 0 }}>
-          <span className="t-soft">내 스쿼트</span>
-          <span style={{ fontSize: 72, fontWeight: 800, lineHeight: 1 }} aria-live="polite">{reps}</span>
-        </div>
+      <div className="col center" style={box}>
+        <span style={{ fontSize: 22, fontWeight: 700 }}>남은 시간</span>
+        <span style={{ fontSize: 150, fontWeight: 800, lineHeight: 1 }}>{Math.ceil(leftMs / 1000)}</span>
       </div>
     )
   }
   const waiting = game.players.filter((p) => !p.hasSubmitted).length
   return (
-    <div className="col center" style={{ gap: 6 }} role="status">
-      <h2 className="t-h2">끝! 내 기록 {reps}회</h2>
-      <p className="t-soft">{hasSubmitted ? (waiting > 0 ? `다른 참가자 ${waiting}명의 결과를 기다리는 중…` : '순위를 계산하는 중…') : '결과를 보내는 중…'}</p>
+    <div className="col center" style={box} role="status">
+      <strong style={{ fontSize: 44 }}>끝! 내 기록 {reps}회</strong>
+      <span style={{ fontSize: 18 }}>{hasSubmitted ? (waiting > 0 ? `다른 참가자 ${waiting}명의 결과를 기다리는 중…` : '순위를 계산하는 중…') : '결과를 보내는 중…'}</span>
     </div>
   )
 }
