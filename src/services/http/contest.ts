@@ -1,6 +1,8 @@
-// 학교 대항 스쿼트 챌린지 서버 연결 (/api/univ-contest/*). 서버 API는 BE에 요청한 형식이다 (아직 배포 전).
+// 학교 대항 스쿼트 챌린지 서버 연결 (/api/univ-contest/*). 형식은 BE 구현(fitmate-be#35)과 같다.
 // 서버가 404(챌린지 API 없음)를 주면 이 브라우저 저장(local)으로 바꾸고 화면에 '이 브라우저에만 저장' 표시를 한다.
-// 시연 중에 저장 위치가 섞이지 않게, 한 번 정한 저장 위치는 새로고침 전까지 바꾸지 않는다.
+// 브라우저 저장 중에도 현황을 받을 때마다 서버를 다시 확인해, 서버가 생기면 서버로 옮긴다
+// (BE 배포 전에 열어 둔 탭이 계속 노트북마다 따로 저장해서 다른 컴퓨터와 같은 판에 못 들어가던 문제).
+// 현황은 판 밖(현황·결과 화면)에서만 받아서 판 도중에 저장 위치가 바뀌지 않는다. 서버를 쓰기 시작하면 다시 브라우저 저장으로 돌아가지 않는다.
 
 import type { ContestGame, ContestStandings } from '../../types/domain'
 import type { ContestService } from '../ports'
@@ -69,17 +71,16 @@ export const httpContest: ContestService = {
     return storage === 'server' && WS_URL ? contestWsRealtime : null
   },
   async getStandings() {
-    if (storage === 'device') return localContest.getStandings()
     try {
       const s = await request<ContestStandings>(`${BASE}/standings`)
       storage = 'server'
       return s
     } catch (e) {
-      // 첫 확인에서만 대체한다. 서버를 쓰던 중 생긴 오류는 그대로 실패로 보여준다
-      if (storage === 'unknown' && isMissingApi(e)) {
-        storage = 'device'
-        return localContest.getStandings()
-      }
+      // 서버를 쓰던 중 생긴 오류는 그대로 실패로 보여준다
+      if (storage === 'server') throw e
+      if (isMissingApi(e)) storage = 'device'
+      // 브라우저 저장 중에 서버 확인이 실패하면(네트워크 등) 그대로 브라우저 저장을 쓴다
+      if (storage === 'device') return localContest.getStandings()
       throw e
     }
   },
