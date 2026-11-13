@@ -11,6 +11,7 @@ import type {
   Profile,
   Routine,
   SessionKind,
+  SunsetStatus,
   TeamProgress,
   WorkoutSession,
 } from '../types/domain'
@@ -32,7 +33,7 @@ export interface RoutineService {
 export interface RecordService {
   /**
    * 운동을 시작하며 기록 ID(sessionId)를 받는다.
-   * 같은 루틴으로 진행 중인 기록이 있으면 같은 ID를 돌려준다 (재접속 시 이어 하기).
+   * 같은 루틴(선셋은 진행 중인 공개 파티 기록)이 있으면 같은 ID를 돌려준다 (재접속 시 이어 하기).
    */
   startSession(input: { kind: SessionKind; routineId: string | null }): Promise<string>
   /**
@@ -45,11 +46,26 @@ export interface RecordService {
   listSessions(userId: string): Promise<WorkoutSession[]>
 }
 
+export interface PublicPartyService {
+  /** 공개 운동방(선셋) 운영 상태 (F-DXORMB). 서버가 답하지 않으면 임시 운영 시각으로 계산한다 */
+  getStatus(): Promise<SunsetStatus>
+}
+
 export interface TeamService {
   /** 세션 기록을 팀 경험치에 반영. 같은 sessionId는 중복 적립하지 않는다. */
   applySession(roomId: string, session: WorkoutSession): Promise<TeamProgress>
   get(roomId: string): Promise<TeamProgress>
 }
+
+/**
+ * 내 실시간 연결 상태. 친구의 연결 상태는 Participant.lastSeenAt으로 따로 판단한다.
+ * - connected    : 정상
+ * - slow         : 연결은 있지만 서버 응답이 늦음
+ * - reconnecting : 끊겨서 다시 연결하는 중 (친구 상태는 최신이 아닐 수 있음)
+ * - replaced     : 같은 프로필로 다른 창에서 입장해 이 창 연결이 닫힘. 자동으로 다시 붙지 않는다
+ * - closed       : 다시 연결할 수 없음 (정원 초과·참가자 없음 등). 사용자가 다시 시도해야 함
+ */
+export type ConnectionState = 'connected' | 'slow' | 'reconnecting' | 'replaced' | 'closed'
 
 /** 실시간 운동방 연결 (F-STRTHT, F-ERSUOK, F-JENTLD, F-HEIEZC, F-DXORMB) */
 export interface RoomConnection {
@@ -61,6 +77,8 @@ export interface RoomConnection {
   onParticipants(cb: (list: Participant[]) => void): () => void
   onPose(cb: (frame: PoseFrame) => void): () => void
   onCheer(cb: (ev: CheerEvent) => void): () => void
+  /** 등록하자마자 지금 상태를 한 번 알려 준다 */
+  onConnection(cb: (state: ConnectionState) => void): () => void
   leave(): void
 }
 
@@ -79,10 +97,34 @@ export interface RealtimeService {
   join(roomId: string, me: Profile, options: JoinOptions): Promise<JoinResult>
 }
 
+/** 운영 화면(/admin)에 보여줄 서버 운동방 한 개 */
+export interface AdminRoom {
+  roomId: string
+  name: string
+  capacity: number
+  teamName: string
+  /** 팀 경험치. 조회에 실패하면 null. 산식 미정이면 안의 값이 null (F-WFAMYP) */
+  team: TeamProgress | null
+}
+
+/**
+ * 운영 화면(/admin)용. manyfast 기획에 없는 화면이라 기능 ID가 없다.
+ * 서버에 운영용 API(전체 참가자·전체 기록·접속자·초기화)가 아직 없어서 지금 있는 공개 API만 쓴다.
+ */
+export interface AdminService {
+  readonly backend: 'local' | 'http'
+  /** 서버 운동방과 팀 경험치. local은 서버 방이 없어서 빈 배열 */
+  listRooms(): Promise<AdminRoom[]>
+  /** 이 브라우저에 보관한 참가자·루틴·기록을 지운다. 서버 데이터는 그대로 남는다 */
+  clearDevice(): Promise<void>
+}
+
 export interface Services {
+  admin: AdminService
   profile: ProfileService
   routine: RoutineService
   record: RecordService
   team: TeamService
   realtime: RealtimeService
+  publicParty: PublicPartyService
 }

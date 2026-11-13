@@ -6,7 +6,8 @@ import type { Participant, Profile, WorkoutSession } from '../types/domain'
 import { SUNSET_EXERCISE } from '../config/provisional'
 import { guideOf, ROUTINE_THUMB } from '../config/exercises'
 import { clockLabel } from '../lib/format'
-import { getSunsetStatus, sunsetHourLabel } from '../lib/sunset'
+import { sunsetHourLabel } from '../lib/sunset'
+import { useSunsetStatus } from '../hooks/useSunsetStatus'
 import { useRoom } from '../hooks/useRoom'
 import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
 import { useWorkout } from '../hooks/useWorkout'
@@ -23,6 +24,7 @@ import WorkoutHud from '../components/room/WorkoutHud'
 import PoseStatus from '../components/room/PoseStatus'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
+import ConnectionBanner from '../components/room/ConnectionBanner'
 import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import groupIcon from '../assets/icons/group-public.png'
@@ -39,10 +41,16 @@ const SUNSET_ITEMS = [{ ...SUNSET_EXERCISE, sets: 1, tag: '선셋 에어로빅 �
 
 export default function Sunset() {
   const profile = useApp((s) => s.profile)!
-  const status = getSunsetStatus()
+  const { status, isChecking } = useSunsetStatus()
+  // 한 번 들어온 방은 이후 상태가 닫힘으로 바뀌어도 그대로 둔다 (이미 하던 운동은 마칠 수 있다, F-DXORMB 권장안)
+  const [hasEntered, setHasEntered] = useState(false)
+  const canEnter = !isChecking && status.isOpen
+  if (canEnter && !hasEntered) setHasEntered(true)
 
-  if (!status.isOpen) return <SunsetClosed nextOpenAt={status.nextOpenAt} />
-  return <SunsetRoom profile={profile} closesAt={status.closesAt} />
+  if (hasEntered) return <SunsetRoom profile={profile} closesAt={status.closesAt} />
+  // 임시 운영 시각으로는 열린 시간이라도 서버 확인을 기다린다 (서버 운영 시각이 다를 수 있음)
+  if (status.isOpen) return <EnterLoading theme="public" title="공개 운동방 운영 시간을 확인하는 중..." steps={[{ label: '운영 시간 확인', isDone: false }]} />
+  return <SunsetClosed nextOpenAt={status.nextOpenAt} />
 }
 
 /** 오픈 전에는 미리보기와 다음 오픈 시각 (F-DXORMB 권장안) */
@@ -89,7 +97,7 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
   const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasSaveError, setHasSaveError] = useState(false)
-  // 선셋은 루틴이 없어 서버 운동 기록 대상이 아니다. 기록 ID만 미리 받아 둔다
+  // 공개 파티 기록 ID를 미리 받아 둔다. 실패하면 끝낼 때 다시 받는다 (서버는 진행 중인 기록을 돌려줘 중복되지 않는다)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const now = useNow(phase === 'play' || phase === 'entering', phase === 'entering' ? 100 : 1000)
 
@@ -227,6 +235,7 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
       view={phase === 'play' ? 'front' : 'tour'}
     >
       <Logo />
+      <ConnectionBanner state={room.connection} onReconnect={room.reconnect} />
       <ModeTabs active="public" />
 
       {phase === 'lobby' && (

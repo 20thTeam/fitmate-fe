@@ -1,6 +1,7 @@
 // 무대 위 3D 캐릭터. 프로필 캐릭터에 3D 모델(GLB)이 있으면 모델을, 없으면 말랑한 공 모양을 세운다.
 // 실제 참가자만 세우고, 운동 중인 사람만 움직인다 (가짜 참가자·자동 모션 금지).
-// 내 캐릭터는 내 카메라 관절 좌표(livePose)로 팔다리를 움직인다 (#10). 친구 캐릭터는 아직 상태(운동 중/대기)만 반영한다.
+// 내 캐릭터는 내 카메라 관절 좌표(livePose)로, 친구 캐릭터는 실시간으로 받은 친구 관절 좌표(peerPoses)로 팔다리를 움직인다.
+// 좌표가 없거나 끊기면 상태(운동 중/대기)만 반영한다.
 // 이름표는 Room3D가 DOM으로 겹친다.
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -8,6 +9,7 @@ import { BufferAttribute, Color, SphereGeometry, type Group, type Material, type
 import type { Participant } from '../../types/domain'
 import { characterOf } from '../../config/characters'
 import { hasFreshLivePose, livePose } from '../../lib/pose/livePose'
+import { freshPeerPose } from '../../lib/pose/peerPoses'
 import ThreeBoundary from './ThreeBoundary'
 import { useCharacterModel } from './useCharacterModel'
 import { BODY_R, figureX } from './layout'
@@ -16,6 +18,12 @@ import { BODY_R, figureX } from './layout'
 const BOUNCE_H = BODY_R * 0.4
 /** 대기 중(본인 제외) 캐릭터를 조금 흐리게 */
 const IDLE_OPACITY = 0.85
+
+/** 이 캐릭터를 움직일 최신 관절 좌표. 없으면 null. 매 프레임 불러도 새 객체를 만들지 않는다 */
+function poseOf(userId: string, isSelf: boolean, now: number): Float32Array | null {
+  if (isSelf) return hasFreshLivePose(now) ? livePose.world : null
+  return freshPeerPose(userId, now)
+}
 
 /** 위→아래 그라데이션을 꼭짓점 색으로 칠한 공 (2D 캐릭터 그림과 같은 색) */
 function useGradientBody(characterId: string) {
@@ -39,6 +47,7 @@ function useGradientBody(characterId: string) {
 }
 
 interface BodyProps {
+  userId: string
   characterId: string
   index: number
   isExercising: boolean
@@ -84,7 +93,7 @@ function BallBody({ characterId, index, isExercising, isFaded }: BodyProps) {
   )
 }
 
-function ModelBody({ url, index, isExercising, isFaded, isSelf }: BodyProps & { url: string; isSelf: boolean }) {
+function ModelBody({ url, userId, index, isExercising, isFaded, isSelf }: BodyProps & { url: string; isSelf: boolean }) {
   const { model, rig } = useCharacterModel(url)
   const bodyRef = useRef<Group>(null)
   const isPosedRef = useRef(false)
@@ -104,11 +113,12 @@ function ModelBody({ url, index, isExercising, isFaded, isSelf }: BodyProps & { 
   useFrame((state) => {
     const body = bodyRef.current
     if (!body) return
-    // 내 카메라에서 관절이 잡히는 동안은 그 자세를 그대로 따라 한다
+    // 관절 좌표가 들어오는 동안은 그 자세를 그대로 따라 한다 (나: 내 카메라, 친구: 실시간으로 받은 좌표)
     const now = performance.now()
-    if (isSelf && rig && hasFreshLivePose(now)) {
+    const world = rig ? poseOf(userId, isSelf, now) : null
+    if (rig && world) {
       body.scale.set(1, 1, 1)
-      rig.apply(livePose.world, now)
+      rig.apply(world, now)
       isPosedRef.current = true
       return
     }
@@ -146,7 +156,7 @@ function Figure({ participant, x, z, index, isSelf, onCheer }: FigureProps) {
   const isExercising = participant.status === 'exercising'
   const canCheer = !!onCheer && !isSelf
   const modelUrl = characterOf(participant.characterId).modelUrl
-  const bodyProps: BodyProps = { characterId: participant.characterId, index, isExercising, isFaded: !isExercising && !isSelf }
+  const bodyProps: BodyProps = { userId: participant.userId, characterId: participant.characterId, index, isExercising, isFaded: !isExercising && !isSelf }
 
   // 매 프레임: ref만 바꾸고 새 객체를 만들지 않는다 (AGENTS.md 성능 규칙)
   useFrame((state) => {
@@ -154,7 +164,7 @@ function Figure({ participant, x, z, index, isSelf, onCheer }: FigureProps) {
     if (!root) return
     const t = state.clock.elapsedTime + index * 0.7
     // 카메라 자세를 따라 하는 중이면 튀지 않는다 (발을 바닥에 붙여 둔다)
-    const isPosed = isSelf && !!modelUrl && hasFreshLivePose(performance.now())
+    const isPosed = !!modelUrl && poseOf(participant.userId, isSelf, performance.now()) !== null
     root.position.y = isExercising && !isPosed ? Math.abs(Math.sin(t * 3.2)) * BOUNCE_H : 0
   })
 

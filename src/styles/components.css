@@ -506,6 +506,39 @@ button.check-item:hover { color: #fff; }
   color: #fff;
 }
 
+/* ───────── 내 실시간 연결 상태 안내 ───────── */
+.conn-banner {
+  position: fixed;
+  top: 56px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 61;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(720px, calc(100vw - 32px));
+  padding: 10px 14px 10px 20px;
+  border-radius: var(--radius-pill);
+  background: rgba(46, 49, 62, 0.9);
+  border: 1px solid var(--c-glass-line);
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+}
+.conn-banner.is-slow { background: rgba(122, 88, 20, 0.9); }
+.conn-banner.is-replaced,
+.conn-banner.is-closed { background: rgba(140, 45, 60, 0.92); }
+.conn-spinner {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: conn-spin 0.9s linear infinite;
+}
+@keyframes conn-spin { to { transform: rotate(360deg); } }
+
 /* ───────── 캐릭터 자리 (3D 연결 전) ───────── */
 .figure { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; font-weight: 700; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.45); }
 .figure img { width: 56px; height: 56px; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.25)); }

@@ -66,6 +66,7 @@ src/
 | `/result/:sessionId` | 운동 완료 + 다음 회차 추천(이전 회차 비교) | F-XXCKUD, F-SYGFQC, F-WBCAEC, F-WFAMYP |
 | `/history` | 성장 기록 | F-YBENHN |
 | `/sunset` | 공개 운동방(선셋 에어로빅) 입장 대기 → 카메라 확인 → 운동 진행 (`?sunset=open`으로 개발 중 오픈 상태 확인) | F-DXORMB (P1) |
+| `/admin` | 운영 화면: 서버 연결·운동방·팀 경험치·이 브라우저 참가자 확인, 이 브라우저 데이터 지우기. 메뉴에 링크가 없고 `VITE_ADMIN_PASSWORD` 암호로 열어요. 전체 참가자·전체 기록은 BE API 준비 중 | — (manyfast 기획에 없는 화면) |
 
 ## 백엔드 연동 가이드
 
