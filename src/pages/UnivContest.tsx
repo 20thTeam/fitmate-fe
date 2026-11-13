@@ -32,6 +32,25 @@ const NICKNAME_MAX = 10
 const BOARD_REFRESH_MS = 5000
 /** 결과 제출이 실패하면 이 간격으로 다시 보낸다 */
 const SUBMIT_RETRY_MS = 1500
+type Hurry = 'none' | 'hurry' | 'final'
+const HURRY_COLOR: Record<Hurry, string> = { none: '#5a4757', hurry: '#e8833a', final: '#e5484d' }
+
+/** 짧은 알림음. 브라우저는 클릭한 뒤에 만든 소리만 내게 해서 참가·시작 버튼을 누를 때 AudioContext를 연다 */
+function playBeep(ctx: AudioContext | null, freq: number, durationSec: number) {
+  if (!ctx || ctx.state !== 'running') return
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  const t = ctx.currentTime
+  osc.type = 'square'
+  osc.frequency.value = freq
+  gain.gain.setValueAtTime(0.0001, t)
+  gain.gain.exponentialRampToValueAtTime(0.12, t + 0.01)
+  gain.gain.exponentialRampToValueAtTime(0.0001, t + durationSec)
+  osc.connect(gain).connect(ctx.destination)
+  osc.start(t)
+  osc.stop(t + durationSec + 0.02)
+}
+
 /** 판에 들어온 순서대로 캐릭터를 나눠 준다. 모든 노트북이 같은 판 순서를 보므로 같은 사람은 어디서나 같은 캐릭터다 */
 const characterIdAt = (index: number) => CHARACTERS[index % CHARACTERS.length].id
 
@@ -157,6 +176,27 @@ export default function UnivContest() {
   const me = useMemo<Profile>(() => ({ userId: playerId, nickname: nickname.trim(), characterId: characterIdAt(0) }), [playerId, nickname])
   const room = useRoom(live && gameId ? `contest-${gameId}` : null, me, { maxParticipants: CONTEST_RULES.maxPlayers, initial: { status: 'waiting' } }, live ?? services.realtime)
   const isRunningNow = view === 'play' && status === 'RUNNING' && !isTimeUp && !hasSubmitted
+  // ── 남은 10초·5초 긴박감 (화면 색·깜빡임·알림음) ──
+  const leftSec = isRunningNow && endAt !== null ? Math.ceil((endAt - serverNow) / 1000) : null
+  const hurry: Hurry = leftSec === null ? 'none' : leftSec <= CONTEST_RULES.finalSeconds ? 'final' : leftSec <= CONTEST_RULES.hurrySeconds ? 'hurry' : 'none'
+  const audioRef = useRef<AudioContext | null>(null)
+  const unlockAudio = () => {
+    try {
+      audioRef.current ??= new AudioContext()
+      void audioRef.current.resume()
+    } catch {
+      // 소리를 못 내도 화면 연출은 그대로 둔다
+    }
+  }
+  useEffect(() => {
+    // 10초 남았을 때 한 번, 마지막 5초는 매초
+    if (leftSec === CONTEST_RULES.hurrySeconds) playBeep(audioRef.current, 660, 0.15)
+    else if (leftSec !== null && leftSec <= CONTEST_RULES.finalSeconds) playBeep(audioRef.current, 880, 0.12)
+  }, [leftSec])
+  const isEnded = view === 'play' && isTimeUp
+  useEffect(() => {
+    if (isEnded) playBeep(audioRef.current, 1046, 0.6)
+  }, [isEnded])
   const myStatus: ParticipantStatus = isRunningNow ? 'exercising' : view === 'play' && status === 'RUNNING' ? 'done' : 'waiting'
   const { updateSelf, state: roomState } = room
   useEffect(() => {
@@ -164,6 +204,7 @@ export default function UnivContest() {
   }, [roomState, myStatus, reps, updateSelf])
 
   const join = async () => {
+    unlockAudio()
     setIsBusy(true)
     setActionError('')
     try {
@@ -183,6 +224,7 @@ export default function UnivContest() {
   }
 
   const start = async () => {
+    unlockAudio()
     if (!game) return
     setIsBusy(true)
     setActionError('')
@@ -217,11 +259,12 @@ export default function UnivContest() {
       <Scene
         theme="public"
         view={view === 'play' ? 'front' : 'tour'}
-        screen={<StageScreen view={view} status={status} game={game} serverNow={serverNow} hasSubmitted={hasSubmitted} reps={reps} />}
+        screen={<StageScreen view={view} status={status} game={game} serverNow={serverNow} hasSubmitted={hasSubmitted} reps={reps} hurry={hurry} />}
         participants={stage.figures}
         selfId={playerId}
         maxShown={CONTEST_RULES.maxPlayers}
       >
+        {hurry !== 'none' && <div className={`contest-vignette is-${hurry}`} aria-hidden />}
         <Logo isLight />
         <div className="row center wrap" style={{ position: 'absolute', left: 0, right: 0, top: 28, gap: 8, pointerEvents: 'none' }}>
           <span className="chip chip-ghost">학교 대항 스쿼트 20초 챌린지</span>
@@ -260,7 +303,7 @@ export default function UnivContest() {
               </div>
             </>
           ) : (
-            <div className="glass col center" style={{ gap: 0, padding: '12px 32px' }}>
+            <div className="glass col center" style={{ gap: 0, padding: '12px 32px', outline: hurry === 'none' ? undefined : `3px solid ${HURRY_COLOR[hurry]}` }}>
               <span className="t-small">내 스쿼트</span>
               <span style={{ fontSize: 56, fontWeight: 800, lineHeight: 1.1 }} aria-live="polite">{reps}</span>
             </div>
@@ -454,10 +497,10 @@ function stagePeople(game: ContestGame, gameStatus: string, playerId: string, li
   return { figures, panel }
 }
 
-const SCREEN_TEXT = '#5a4757'
+const SCREEN_TEXT = HURRY_COLOR.none
 
 /** 3D 스크린 안 내용 (640×313 px 판에 그려서 원근으로 늘린다) */
-function StageScreen({ view, status, game, serverNow, hasSubmitted, reps }: { view: string; status: string; game: ContestGame; serverNow: number; hasSubmitted: boolean; reps: number }) {
+function StageScreen({ view, status, game, serverNow, hasSubmitted, reps, hurry }: { view: string; status: string; game: ContestGame; serverNow: number; hasSubmitted: boolean; reps: number; hurry: Hurry }) {
   // 캐릭터 머리와 이름표가 스크린 아래쪽을 가려서 글자는 위쪽에 모은다
   const box = { color: SCREEN_TEXT, gap: 6, width: '100%', height: '100%', padding: '26px 24px', textAlign: 'center' as const, justifyContent: 'flex-start' }
   if (view === 'lobby') {
@@ -482,10 +525,13 @@ function StageScreen({ view, status, game, serverNow, hasSubmitted, reps }: { vi
   }
   const leftMs = Math.max(0, startAt + game.durationMs - serverNow)
   if (leftMs > 0 && !hasSubmitted) {
+    const sec = Math.ceil(leftMs / 1000)
+    const label = hurry === 'final' ? '마지막 스퍼트!' : hurry === 'hurry' ? '조금만 더! 끝까지 가요' : '남은 시간'
     return (
-      <div className="col center" style={box}>
-        <span style={{ fontSize: 22, fontWeight: 700 }}>남은 시간</span>
-        <span style={{ fontSize: 150, fontWeight: 800, lineHeight: 1 }}>{Math.ceil(leftMs / 1000)}</span>
+      <div className="col center" style={{ ...box, color: HURRY_COLOR[hurry] }}>
+        <span style={{ fontSize: hurry === 'none' ? 22 : 28, fontWeight: 800 }}>{label}</span>
+        {/* 마지막 5초는 key를 바꿔 매초 튀는 효과를 다시 시작한다 */}
+        <span key={hurry === 'final' ? sec : 'n'} className={hurry === 'final' ? 'contest-tick' : undefined} style={{ fontSize: hurry === 'final' ? 170 : 150, fontWeight: 800, lineHeight: 1 }}>{sec}</span>
       </div>
     )
   }
