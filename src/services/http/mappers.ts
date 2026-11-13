@@ -190,7 +190,7 @@ export function fromRtParticipant(v: RtParticipantView): Participant {
   return {
     userId: String(v.participantId),
     nickname: v.nickname,
-    characterId: fromCharacterCode(v.characterCode),
+    characterId: fromCharacterCode(v.characterCode ?? ''),
     ...fromRtStatus(v),
     lastSeenAt: 0,
   }

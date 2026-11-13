@@ -27,8 +27,14 @@ const POSE_MIN_INTERVAL_MS = 1000 / 12
 /** 친구 '연결 불안정' 표시(lastSeenAt 기준)를 갱신하는 주기. STALE_PEER_MS보다 짧아야 한다 */
 const REFRESH_MS = 2000
 
-/** 다시 연결해도 소용없는 오류. 공개 파티는 닫힌 뒤 재접속도 거부된다 (이미 하던 운동은 끝까지 할 수 있다) */
-const FATAL_ERRORS = new Set(['PARTICIPANT_NOT_FOUND', 'ROOM_NOT_FOUND', 'ROOM_FULL', 'PUBLIC_PARTY_NOT_FOUND', 'PUBLIC_PARTY_CLOSED'])
+/**
+ * 다시 연결해도 소용없는 오류. 공개 파티는 닫힌 뒤 재접속도 거부된다 (이미 하던 운동은 끝까지 할 수 있다).
+ * 챌린지 판은 끝나면 서버가 1000 CONTEST_GAME_FINISHED로 닫는다. 결과는 REST로 받으니 다시 붙지 않는다
+ */
+const FATAL_ERRORS = new Set([
+  'PARTICIPANT_NOT_FOUND', 'ROOM_NOT_FOUND', 'ROOM_FULL', 'PUBLIC_PARTY_NOT_FOUND', 'PUBLIC_PARTY_CLOSED',
+  'CONTEST_GAME_NOT_FOUND', 'CONTEST_PLAYER_NOT_FOUND', 'CONTEST_GAME_FINISHED',
+])
 
 type JoinOutcome = 'ok' | 'full' | 'fatal' | 'network'
 
