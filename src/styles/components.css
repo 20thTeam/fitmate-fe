@@ -654,3 +654,26 @@ button.check-item:hover { color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .contest-vignette.is-final, .contest-tick { animation: none; }
 }
+
+/* 세트 완료·휴식 끝 카드 (코치 말풍선 자리, 눈높이) */
+.step-done {
+  pointer-events: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 14px 18px 12px; border-radius: 22px;
+  background: rgba(36, 38, 50, 0.92); border: 2px solid #a9ea9b;
+  box-shadow: 0 0 0 6px rgba(127, 211, 107, 0.25), 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.step-done.is-pop { animation: coach-pop 0.28s ease-out; }
+.step-done-title { display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 800; color: #fff; white-space: nowrap; }
+.step-done-title .coach-bubble-icon { background: var(--c-good); }
+.step-done-title small { font-size: 18px; font-weight: 700; color: var(--c-ring-done); }
+.step-done-action {
+  min-height: 72px; min-width: 260px; padding: 0 28px; justify-content: space-between;
+  font-size: 30px; font-weight: 800; border-radius: var(--radius);
+  background: linear-gradient(90deg, #4f9a45, #7fd36b); animation: hud-ready 1.4s ease-in-out infinite;
+}
+.step-done-hint { font-size: 16px; color: var(--c-text-soft); }
+.step-done-end { font-size: 18px; font-weight: 700; color: #fff; padding: 6px 14px; border-radius: var(--radius-pill); background: rgba(191, 161, 163, 0.35); }
+.step-done-end:hover { background: rgba(191, 161, 163, 0.6); }
+@media (prefers-reduced-motion: reduce) {
+  .step-done.is-pop, .step-done-action { animation: none; }
+}

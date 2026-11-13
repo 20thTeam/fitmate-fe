@@ -22,6 +22,7 @@ import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
 import CoachBubble from '../components/room/CoachBubble'
+import StepDoneCard from '../components/room/StepDoneCard'
 import MyCameraPanel from '../components/room/MyCameraPanel'
 import VoiceToggle from '../components/room/VoiceToggle'
 import InviteModal from '../components/room/InviteModal'
@@ -346,6 +347,30 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
   const coachExerciseId = phase === 'play' ? item.exerciseId : phase === 'rest' ? next?.exerciseId : undefined
   const hasCoach = !!coachExerciseId && canUseWebGL()
 
+  const nextLabel = !isLastSet ? '다음 세트' : isLast ? '운동 마치기' : '다음 운동'
+  const isKeyEnabled = !isEndConfirmOpen && !isGuideOpen && !isInviteOpen && !isCameraBroken && blocker.state !== 'blocked'
+  const doneCard = phase === 'play' && isSetDone ? (
+    <StepDoneCard
+      title={isLastSet ? `${item.name} 완료!` : `세트 ${workout.setNo} 완료!`}
+      sub={`${workout.setProgress} / ${setTarget}${item.targetReps ? '회' : '초'}`}
+      actionLabel={nextLabel}
+      onAction={handleNext}
+      onEnd={() => setIsEndConfirmOpen(true)}
+      isDisabled={isSaving}
+      isKeyEnabled={isKeyEnabled}
+    />
+  ) : phase === 'rest' && next && restLeftSec === 0 ? (
+    <StepDoneCard
+      title="휴식 끝!"
+      sub={`다음: ${next.name}`}
+      actionLabel={`${next.name} 시작`}
+      onAction={handleStartNextExercise}
+      onEnd={() => setIsEndConfirmOpen(true)}
+      isDisabled={!camera.isOn}
+      isKeyEnabled={isKeyEnabled}
+    />
+  ) : null
+
   return (
     <Scene
       theme="friend"
@@ -408,9 +433,10 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
             overlay={phase === 'play' && <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
             footer={<VoiceToggle voice={voice} />}
           />
-          {phase === 'play' && (
+          {/* 세트를 채웠거나 휴식이 끝나면 눈높이에 다음 단계 카드를 띄운다. 그동안 코치 말풍선은 쉰다 */}
+          {doneCard ?? (phase === 'play' && (
             <CoachBubble notes={record.postureNotes} {...counting} isRunning={workout.isRunning} onRetry={counting.retry} onSpeak={voice.speak} />
-          )}
+          ))}
 
           {phase === 'play' ? (
             <WorkoutHud
@@ -436,7 +462,7 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
               action={
                 // 목표를 채우면 초록으로 깜빡여 다음 단계로 넘어가라고 알린다. 자동으로 넘기지는 않는다 (F-SZCKIV)
                 <button className={`btn btn-brown hud-action ${isSetDone ? 'is-ready' : ''}`} disabled={isSaving} onClick={handleNext}>
-                  {!isLastSet ? '다음 세트' : isLast ? '운동 마치기' : '다음 운동'}<span aria-hidden>&gt;</span>
+                  {nextLabel}<span aria-hidden>&gt;</span>
                 </button>
               }
               subAction={<button className="hud-sub" onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>}
