@@ -144,3 +144,56 @@ export interface TeamProgress {
   level: number | null
   nextLevelXp: number | null
 }
+
+// ── 학교 대항 스쿼트 챌린지 (/univ-contest). manyfast 기획에 없는 시연 당일 이벤트라 기능 ID가 없다 ──
+
+/**
+ * 한 판의 진행 상태. 서버 시각 기준으로 정한다.
+ * - WAITING   : 참가자를 모으는 중 (누구나 시작 가능)
+ * - COUNTDOWN : 시작을 눌러 카운트다운 중
+ * - RUNNING   : 운동 중
+ * - FINISHED  : 모두 결과를 냈거나 제출 마감이 지남
+ */
+export type ContestGameStatus = 'WAITING' | 'COUNTDOWN' | 'RUNNING' | 'FINISHED'
+
+export interface ContestPlayer {
+  playerId: string
+  nickname: string
+  schoolId: string
+  /** 제출 전이거나 자세가 한 번도 인식되지 않았으면 null. null은 순위·학교 합계에 넣지 않는다 */
+  reps: number | null
+  hasSubmitted: boolean
+}
+
+export interface ContestGame {
+  gameId: string
+  status: ContestGameStatus
+  /** 운동 시작 시각(epoch ms, 서버 시계). 시작 전이면 null */
+  startAt: number | null
+  durationMs: number
+  maxPlayers: number
+  players: ContestPlayer[]
+  /** 응답을 만든 서버 시각. 브라우저 시계와의 차이를 맞추는 데 쓴다 */
+  serverNow: number
+}
+
+export interface ContestSchoolStanding {
+  schoolId: string
+  /** 측정된 판 결과의 합 */
+  totalReps: number
+  /** 결과를 낸 참가 횟수 */
+  entryCount: number
+}
+
+export interface ContestTopPlayer {
+  nickname: string
+  schoolId: string
+  reps: number
+}
+
+export interface ContestStandings {
+  schools: ContestSchoolStanding[]
+  /** 한 판 기록 기준 개인 상위 */
+  topPlayers: ContestTopPlayer[]
+  gameCount: number
+}

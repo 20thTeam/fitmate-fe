@@ -19,6 +19,7 @@ import { SUNSET_EXERCISE } from '../../config/provisional'
 import { devSunsetOverride, getSunsetStatus } from '../../lib/sunset'
 import { ApiError, request, WS_URL } from './client'
 import { createWsRealtime } from './realtime'
+import { httpContest } from './contest'
 import {
   exerciseIdOf,
   fromApiGoal,
@@ -516,4 +517,4 @@ const admin: AdminService = {
   },
 }
 
-export const httpServices: Services = { admin, profile, routine, record, team, realtime, publicParty }
+export const httpServices: Services = { admin, contest: httpContest, profile, routine, record, team, realtime, publicParty }

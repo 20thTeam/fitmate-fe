@@ -7,6 +7,7 @@ import type { AdminService, ProfileService, PublicPartyService, RecordService, R
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
+import { localContest } from './contest'
 import { getSunsetStatus } from '../../lib/sunset'
 
 const KEY = {
@@ -100,4 +101,4 @@ const admin: AdminService = {
   },
 }
 
-export const localServices: Services = { admin, profile, routine, record, team, realtime: localRealtime, publicParty }
+export const localServices: Services = { admin, contest: localContest, profile, routine, record, team, realtime: localRealtime, publicParty }
