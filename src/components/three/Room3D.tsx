@@ -7,6 +7,7 @@ import type { Participant } from '../../types/domain'
 import type { Theme } from '../Backdrop'
 import Environment from './Environment'
 import Characters3D from './Characters3D'
+import CoachScreen from './CoachScreen'
 import { PALETTES } from './palette'
 import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
 
@@ -187,9 +188,11 @@ interface Props {
   onCheer?: (p: Participant) => void
   maxShown?: number
   view: CameraView
+  /** 있으면 스크린 왼쪽에 AI 코치가 이 운동 동작을 반복한다 (친구 운동방, 운동·휴식 중) */
+  coachExerciseId?: string
 }
 
-export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view }: Props) {
+export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId }: Props) {
   const palette = PALETTES[theme]
   const screenRef = useRef<HTMLDivElement>(null)
   const tagRefs = useRef(new Map<string, HTMLElement>())
@@ -222,6 +225,7 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
           shadow-bias={-0.0004}
         />
         <Environment theme={theme} palette={palette} />
+        {coachExerciseId && <CoachScreen exerciseId={coachExerciseId} background={palette.panel} />}
         {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={ROW_Z[view]} onCheer={onCheer} />}
         <CameraRig view={view} />
         <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={ROW_Z[view]} tagY={TAG_Y[view]} />

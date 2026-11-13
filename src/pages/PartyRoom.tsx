@@ -26,6 +26,7 @@ import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '..
 import CameraCheck from '../components/CameraCheck'
 import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
+import { canUseWebGL } from '../lib/webgl'
 import groupIcon from '../assets/icons/group.png'
 import userAddIcon from '../assets/icons/user-add.png'
 import checkIcon from '../assets/icons/check.png'
@@ -291,17 +292,21 @@ function Room({ routine, profile }: { routine: Routine; profile: Profile }) {
   // 휴식 직후 첫 1초는 시계가 이전 값이라 상한을 둔다
   const restLeftSec = Math.min(PROVISIONAL_REST_SECONDS, Math.max(0, Math.ceil((PROVISIONAL_REST_SECONDS * 1000 - (now - restStartedAt)) / 1000)))
   const upcoming = phase === 'rest' ? routine.items[workout.index + 2] : next
+  // AI 코치 시범: 운동 중에는 지금 운동, 휴식 중에는 다음 운동을 보여준다. 3D를 못 쓰면 기존 안내 카드
+  const coachExerciseId = phase === 'play' ? item.exerciseId : phase === 'rest' ? next?.exerciseId : undefined
+  const hasCoach = !!coachExerciseId && canUseWebGL()
 
   return (
     <Scene
       theme="friend"
       screen={phase === 'lobby'
         ? <GuideScreen idleTitle="친구들이 모이면 함께 시작해요" idleDesc={`지금 ${room.participants.length}명 접속 중 · 준비되면 '시작하기'를 눌러 주세요`} />
-        : <GuideScreen exerciseId={phase === 'rest' ? next?.exerciseId : item.exerciseId} name={phase === 'rest' ? next?.name : item.name} />}
+        : <GuideScreen exerciseId={phase === 'rest' ? next?.exerciseId : item.exerciseId} name={phase === 'rest' ? next?.name : item.name} hasCoach={hasCoach} />}
       participants={room.participants}
       selfId={profile.userId}
       onCheer={handleCheer}
       view={phase === 'play' || phase === 'rest' ? 'front' : 'tour'}
+      coachExerciseId={hasCoach ? coachExerciseId : undefined}
     >
       <Logo />
 

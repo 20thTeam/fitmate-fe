@@ -25,11 +25,13 @@ interface Props {
   maxShown?: number
   /** tour: 대기 중 천천히 둘러보기, front: 운동 중 스크린 정면 */
   view?: CameraView
+  /** 있으면 스크린 왼쪽에 AI 코치 시범을 띄운다 (3D에서만. 2D 대체 화면은 기존 안내 카드) */
+  coachExerciseId?: string
   children: ReactNode
 }
 
 /** 2D 그림 장면 (3D 로딩 중·실패 시). 공개방은 카메라 구도에 맞는 그림을 쓴다 */
-function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer, maxShown }: Omit<Props, 'children'>) {
+function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer, maxShown }: Omit<Props, 'children' | 'coachExerciseId'>) {
   const background = theme === 'public'
     ? (view === 'front' ? publicFrontBg : publicAngleBg)
     : friendBg
@@ -42,7 +44,7 @@ function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer
   )
 }
 
-export default function Scene({ theme, screen, participants, selfId, onCheer, maxShown, view = 'tour', children }: Props) {
+export default function Scene({ theme, screen, participants, selfId, onCheer, maxShown, view = 'tour', coachExerciseId, children }: Props) {
   const flat = <FlatScene theme={theme} view={view} screen={screen} participants={participants} selfId={selfId} onCheer={onCheer} maxShown={maxShown} />
   return (
     <main className="scene" data-theme={theme}>
@@ -51,7 +53,7 @@ export default function Scene({ theme, screen, participants, selfId, onCheer, ma
           <ThreeBoundary fallback={flat}>
             {/* 3D를 받는 동안에는 같은 구도의 2D 그림을 보여준다 */}
             <Suspense fallback={<FlatScene theme={theme} view={view} />}>
-              <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} />
+              <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} coachExerciseId={coachExerciseId} />
             </Suspense>
           </ThreeBoundary>
         ) : flat}

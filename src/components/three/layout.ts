@@ -7,6 +7,8 @@ export const SCREEN_W = 8.8
 export const SCREEN_H = 4.3
 /** 스크린 가운데 위치. 카메라도 이 근처를 바라본다. */
 export const SCREEN_CENTER: [number, number, number] = [0, 0.4 + SCREEN_H / 2, -2.6]
+/** 스크린 왼쪽에서 AI 코치 시범 칸이 차지하는 비율. 오른쪽에는 동작 이름·설명 DOM이 온다 */
+export const COACH_SCREEN_RATIO = 0.45
 /** 스크린 안 DOM 크기(px). 실제 화면 크기는 카메라 위치에 따라 matrix3d로 늘이고 줄인다. */
 export const SCREEN_PX_W = 640
 export const SCREEN_PX_H = Math.round((SCREEN_PX_W * SCREEN_H) / SCREEN_W)
