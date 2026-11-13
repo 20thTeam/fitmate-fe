@@ -86,6 +86,9 @@ export const SUNSET_EXERCISE = { exerciseId: 'aerobic_jumping_jack', name: '점�
 /** 친구 파티 최대 인원 (PRD 확정: 2~5명) */
 export const PARTY_MAX = 5
 
+/** 친구 운동방을 만들 수 있는 최대 개수. 미정 → 시연 당일 팀 수를 넉넉히 잡은 개발팀 제안값 (이슈 #40) */
+export const PROVISIONAL_MAX_ROOMS = 20
+
 /** 연결 불안정 판정까지의 시간. 미정 → 개발팀 제안값 */
 export const STALE_PEER_MS = 5000
 

@@ -62,7 +62,8 @@ src/
 | `/home` | 홈 | F-HIPEHA |
 | `/goal` | 목표 선택 + 추천 로딩 | F-FTENXM, F-UZFEMP |
 | `/routine/:id` | (예전 주소) `/room/:id`로 이동 | — |
-| `/room/:routineId` | 친구 운동방 입장 대기(루틴 확인·친구 초대) → 카메라 확인 → 입장 로딩 → 운동 진행 → 휴식 | F-WBCAEC, F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ, F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV |
+| `/room/:routineId?room=` | 운동방 고르기·새 방 만들기(방이 하나뿐이거나 지난번 방이 있으면 건너뜀) → 친구 운동방 입장 대기(루틴 확인·친구 초대·다른 방으로·방 나가기) → 카메라 확인 → 입장 로딩 → 운동 진행 → 휴식 | F-WBCAEC, F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ, F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV |
+| `/join/:roomId` | 친구 초대 링크. 받은 방을 기억하고 목표 선택(프로필이 없으면 프로필 설정부터)을 거쳐 그 방으로 보냄 | F-STRTHT |
 | `/result/:sessionId` | 운동 완료 + 다음 회차 추천(이전 회차 비교) | F-XXCKUD, F-SYGFQC, F-WBCAEC, F-WFAMYP |
 | `/history` | 성장 기록 | F-YBENHN |
 | `/sunset` | 공개 운동방(선셋 에어로빅) 입장 대기 → 카메라 확인 → 운동 진행 (`?sunset=open`으로 개발 중 오픈 상태 확인) | F-DXORMB (P1) |
@@ -84,6 +85,7 @@ src/
 | routine | get | `GET /routines/:id` |
 | record | saveSession | `POST /sessions` (sessionId로 중복 저장 방지) |
 | record | getSession / listSessions | `GET /sessions/:id`, `GET /users/:id/sessions` |
+| rooms | list / get / create / getLast / remember / leave | `GET /api/rooms`, `GET /api/rooms/:id`, (요청) `POST /api/rooms`, `POST /api/rooms/:id/enter`, (요청) `POST /api/rooms/:id/leave` |
 | team | applySession / get | `POST /teams/:roomId/apply`, `GET /teams/:roomId` |
 | realtime | join(roomId, me, { maxParticipants, initial }) | WebSocket `/ws?room=` (친구 파티 5명 제한, 선셋은 제한 없음) |
 

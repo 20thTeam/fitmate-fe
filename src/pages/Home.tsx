@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { services } from '../services'
 import { useApp } from '../store/app'
-import type { WorkoutSession } from '../types/domain'
+import type { FriendRoom, WorkoutSession } from '../types/domain'
 import { summarize } from '../lib/stats'
 import { durationLabel } from '../lib/format'
 import { sunsetOpenLabel } from '../lib/sunset'
@@ -22,6 +22,20 @@ export default function Home() {
   const [sessions, setSessions] = useState<WorkoutSession[] | null>(null)
   const [hasError, setHasError] = useState(false)
   const { status: sunset } = useSunsetStatus()
+  // 다음에 친구 운동방으로 가면 들어갈 방 (이슈 #40). 못 불러와도 홈은 그대로 쓴다
+  const [lastRoom, setLastRoom] = useState<FriendRoom | null>(null)
+
+  useEffect(() => {
+    const life = { isAlive: true }
+    services.rooms
+      .getLast(profile.userId)
+      .then((id) => (id ? services.rooms.get(id) : null))
+      .then((room) => life.isAlive && setLastRoom(room))
+      .catch(() => {})
+    return () => {
+      life.isAlive = false
+    }
+  }, [profile.userId])
 
   useEffect(() => {
     services.record
@@ -47,6 +61,7 @@ export default function Home() {
             <span className="panel-pill" style={{ alignSelf: 'flex-start' }}><img src={groupIcon} alt="" width={18} height={18} />친구 운동방</span>
             <h2 className="t-title">친구들과 운동하기</h2>
             <p className="t-soft" style={{ lineHeight: 1.6 }}>AI가 추천한 나만의 루틴으로 친구들과 같은 운동방에서 함께 운동해요. 최대 5명까지 들어올 수 있어요.</p>
+            {lastRoom && <p className="t-small">지난번 운동방: <strong>{lastRoom.name}</strong> · 이번에도 이 방으로 들어가요</p>}
             <div className="row" style={{ gap: 12, marginTop: 'auto' }}>
               <button className="btn btn-primary btn-lg" onClick={() => nav('/goal')}>운동 목표 고르기</button>
               {lastRoutineId && <button className="btn btn-secondary" onClick={() => nav(`/room/${lastRoutineId}`)}>지난 운동방으로</button>}

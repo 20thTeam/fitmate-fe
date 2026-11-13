@@ -8,14 +8,17 @@
 //   오픈 상태(/api/public-parties/current)와 실시간 partyId 입장은 서버에 있으면 쓰고,
 //   없는 서버(2026-11-12 배포본)면 임시 운영 시각(lib/sunset)과 같은 브라우저 탭끼리 연결(BroadcastChannel)로 대신한다.
 // - 실시간: 친구 운동방은 서버 웹소켓(/ws)으로 다른 PC와 연결한다(http/realtime.ts).
+// - 친구 운동방: 서버 방 목록(/api/rooms)에서 고르고, 방 번호로 입장한다. 서버에 방 만들기 API가 없어서 새 방은 만들 수 없다.
+//   마지막 방은 이 브라우저에 기억하고, 기록이 없으면 서버가 아는 내 마지막 입장 방(/api/participants/me roomId)을 쓴다.
 
-import type { ExerciseRecord, Profile, Routine, SunsetStatus, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { AdminPublicParty, AdminService, ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
+import type { ExerciseRecord, FriendRoom, Profile, Routine, SunsetStatus, TeamProgress, WorkoutSession } from '../../types/domain'
+import type { AdminPublicParty, AdminService, FriendRoomService, ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from '../local/storage'
 import { localRealtime } from '../local/realtime'
+import { createLastRoomStore } from '../local/rooms'
 import { DEMO_ROOM_ID, SUNSET_ROOM_ID } from '../../store/app'
-import { SUNSET_EXERCISE } from '../../config/provisional'
+import { PARTY_MAX, SUNSET_EXERCISE } from '../../config/provisional'
 import { devSunsetOverride, getSunsetStatus } from '../../lib/sunset'
 import { ApiError, request, WS_URL } from './client'
 import { createWsRealtime } from './realtime'
@@ -53,6 +56,7 @@ const KEY = {
   localRoutines: 'fitmate.http.localRoutines',
   difficultySteps: 'fitmate.http.difficultySteps',
   sessions: 'fitmate.http.sessions',
+  lastRoom: 'fitmate.http.lastRoom',
 }
 
 /** 앱 첫 화면이 이 확인을 기다리므로 짧게 둔다 */
@@ -219,7 +223,7 @@ function cacheSession(s: WorkoutSession) {
 
 let roomPromise: Promise<RoomResponse> | null = null
 
-/** 시연은 지정 운동방 하나다 (GET /api/rooms 의 첫 번째 방) */
+/** 방 번호를 모를 때 쓰는 기본 방 (GET /api/rooms 의 첫 번째 방) */
 function demoRoom() {
   roomPromise ??= request<RoomResponse[]>('/api/rooms').then((rooms) => {
     if (!rooms[0]) throw new ApiError('http', '운동방이 없어요', 404, '404-4')
@@ -321,7 +325,7 @@ async function finishOnce(path: string, body: unknown) {
 }
 
 const record: RecordService = {
-  async startSession({ kind, routineId }) {
+  async startSession({ kind, routineId, roomId }) {
     // 선셋은 루틴 없이 공개 파티 기록을 만든다. 진행 중인 공개 파티 기록이 있으면 서버가 그 기록을 돌려준다(새로고침해도 하나)
     if (kind === 'sunset') {
       const w = await request<WorkoutResponse>('/api/public-parties/workouts', { method: 'POST', token: tokenOf() })
@@ -331,8 +335,8 @@ const record: RecordService = {
     if (!isServerId(routineId)) return uid()
     const token = tokenOf()
     // 운동 기록에 지금 입장한 방이 남도록 먼저 입장한다 (팀 경험치 적립 대상)
-    const room = await demoRoom()
-    await request<RoomResponse>(`/api/rooms/${room.roomId}/enter`, { method: 'POST', token })
+    const serverRoomId = isServerId(roomId) ? Number(roomId) : (await demoRoom()).roomId
+    await request<RoomResponse>(`/api/rooms/${serverRoomId}/enter`, { method: 'POST', token })
     const w = await request<WorkoutResponse>('/api/workouts', { method: 'POST', body: { routineId: Number(routineId) }, token })
     return String(w.workoutId)
   },
@@ -405,9 +409,9 @@ const team: TeamService = {
       nextLevelXp: xp?.nextLevelXp ?? null,
     }
   },
-  // 프론트 운동방 ID(DEMO_ROOM_ID)와 서버 방 ID가 달라서 서버의 지정 운동방 팀을 쓴다
-  async get() {
-    const room = await demoRoom()
+  // 서버 방 번호가 아니면(예전 기록의 DEMO_ROOM_ID) 기본 방의 팀을 쓴다
+  async get(roomId) {
+    const room = isServerId(roomId) ? await request<RoomResponse>(`/api/rooms/${roomId}`) : await demoRoom()
     const xp = await fetchTeamXp(room.teamId)
     if (!xp.formulaDecided) return noTeamXp(String(room.teamId))
     return { teamId: String(xp.teamId), gainedXp: null, totalXp: xp.totalXp, level: xp.level, nextLevelXp: xp.nextLevelXp }
@@ -420,11 +424,11 @@ const getToken = () => readAuth()?.token ?? null
 
 const wsRealtime = createWsRealtime({
   getToken,
-  async joinTarget(token) {
+  async joinTarget(token, { roomId }) {
     // 서버는 REST 입장을 마친 방에만 실시간 입장을 받는다. 같은 방에 다시 들어가도 그대로다
-    const room = await demoRoom()
-    await request<RoomResponse>(`/api/rooms/${room.roomId}/enter`, { method: 'POST', token })
-    return { roomId: room.roomId }
+    const serverRoomId = isServerId(roomId) ? Number(roomId) : (await demoRoom()).roomId
+    await request<RoomResponse>(`/api/rooms/${serverRoomId}/enter`, { method: 'POST', token })
+    return { roomId: serverRoomId }
   },
 })
 
@@ -441,7 +445,8 @@ const partyRealtime = createWsRealtime({
 
 const realtime: RealtimeService = {
   async join(roomId, me, options) {
-    if (roomId === DEMO_ROOM_ID && WS_URL) return wsRealtime.join(roomId, me, options)
+    // 친구 운동방은 서버 방 번호로 들어온다. 방마다 서버 채널이 따로라 참가자·관절 좌표가 섞이지 않는다
+    if ((isServerId(roomId) || roomId === DEMO_ROOM_ID) && WS_URL) return wsRealtime.join(roomId, me, options)
     if (roomId === SUNSET_ROOM_ID && WS_URL) {
       let party: PublicPartyResponse | null
       try {
@@ -501,6 +506,52 @@ const publicParty: PublicPartyService = {
 }
 
 
+// ───── 친구 운동방 ─────
+
+const toFriendRoom = (r: RoomResponse): FriendRoom => ({ roomId: String(r.roomId), name: r.name, capacity: Math.min(r.capacity, PARTY_MAX) })
+const lastRoom = createLastRoomStore(KEY.lastRoom)
+
+const rooms: FriendRoomService = {
+  async list() {
+    return (await request<RoomResponse[]>('/api/rooms')).map(toFriendRoom)
+  },
+  async get(roomId) {
+    // 서버 방 번호가 아닌 ID(로컬에서 만든 방의 초대 링크 등)는 서버에 없는 방이다
+    if (!isServerId(roomId)) return null
+    try {
+      return toFriendRoom(await request<RoomResponse>(`/api/rooms/${roomId}`))
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return null
+      throw e
+    }
+  },
+  // 서버에 방 만들기 API가 아직 없다 (BE 요청서 참고)
+  canCreate: false,
+  async create() {
+    throw new ApiError('http', '서버에서 아직 운동방을 만들 수 없어요', 501)
+  },
+  async getLast(userId) {
+    const saved = lastRoom.get(userId)
+    if (saved !== undefined) return saved
+    // 이 브라우저에 기록이 없으면 서버가 아는 마지막 입장 방을 쓴다
+    const auth = readAuth()
+    if (!auth || auth.profile.userId !== userId) return null
+    try {
+      const me = await request<ParticipantResponse>('/api/participants/me', { token: auth.token, timeoutMs: RESTORE_TIMEOUT_MS })
+      return me.roomId === null ? null : String(me.roomId)
+    } catch {
+      return null
+    }
+  },
+  async remember(userId, roomId) {
+    lastRoom.set(userId, roomId)
+  },
+  // 서버에 방 나가기 API가 없어서 이 브라우저 기억만 지운다. 서버의 마지막 입장 방은 그대로 남는다
+  async leave(userId) {
+    lastRoom.set(userId, null)
+  },
+}
+
 // ───── 운영 화면 ─────
 
 const admin: AdminService = {
@@ -538,4 +589,4 @@ const admin: AdminService = {
   },
 }
 
-export const httpServices: Services = { admin, contest: httpContest, profile, routine, record, team, realtime, publicParty }
+export const httpServices: Services = { admin, contest: httpContest, profile, routine, record, team, realtime, publicParty, rooms }

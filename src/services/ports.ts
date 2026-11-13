@@ -7,6 +7,7 @@ import type {
   CheerEvent,
   ContestGame,
   ContestStandings,
+  FriendRoom,
   GoalId,
   Participant,
   PoseFrame,
@@ -38,7 +39,7 @@ export interface RecordService {
    * 운동을 시작하며 기록 ID(sessionId)를 받는다.
    * 같은 루틴(선셋은 진행 중인 공개 파티 기록)이 있으면 같은 ID를 돌려준다 (재접속 시 이어 하기).
    */
-  startSession(input: { kind: SessionKind; routineId: string | null }): Promise<string>
+  startSession(input: { kind: SessionKind; routineId: string | null; roomId: string | null }): Promise<string>
   /**
    * startSession으로 받은 sessionId로 기록을 확정한다.
    * sessionId 기준으로 중복 저장하지 않고, 이미 확정된 기록이면 성공으로 본다.
@@ -47,6 +48,25 @@ export interface RecordService {
   getSession(sessionId: string): Promise<WorkoutSession | null>
   /** 본인 기록만 반환 (F-YBENHN) */
   listSessions(userId: string): Promise<WorkoutSession[]>
+}
+
+/**
+ * 친구 운동방 목록·만들기와 '마지막으로 들어간 방' 기억 (F-STRTHT 확장, 이슈 #40).
+ * 마지막 방은 같은 브라우저 임시 프로필(userId) 기준으로 기억한다.
+ */
+export interface FriendRoomService {
+  list(): Promise<FriendRoom[]>
+  /** 없거나 삭제된 방이면 null */
+  get(roomId: string): Promise<FriendRoom | null>
+  /** 이 구현에서 새 방을 만들 수 있는지. 서버에 방 만들기 API가 없으면 false */
+  readonly canCreate: boolean
+  create(input: { name: string }): Promise<FriendRoom>
+  /** 마지막으로 들어간 방 ID. 들어간 적이 없거나 '방 나가기'를 했으면 null */
+  getLast(userId: string): Promise<string | null>
+  /** 입장에 성공한 방을 기억한다. 다음에 친구 운동방으로 가면 이 방으로 바로 들어간다 */
+  remember(userId: string, roomId: string): Promise<void>
+  /** 방에서 완전히 나간다. 다음에는 방을 다시 고른다 */
+  leave(userId: string): Promise<void>
 }
 
 export interface PublicPartyService {
@@ -122,7 +142,7 @@ export interface AdminPublicParty {
  */
 export interface AdminService {
   readonly backend: 'local' | 'http'
-  /** 서버 운동방과 팀 경험치. local은 서버 방이 없어서 빈 배열 */
+  /** 친구 운동방과 팀 경험치. local은 이 브라우저에서 만든 방 */
   listRooms(): Promise<AdminRoom[]>
   /** 이 브라우저에 보관한 참가자·루틴·기록을 지운다. 서버 데이터는 그대로 남는다 */
   clearDevice(): Promise<void>
@@ -171,4 +191,5 @@ export interface Services {
   team: TeamService
   realtime: RealtimeService
   publicParty: PublicPartyService
+  rooms: FriendRoomService
 }
