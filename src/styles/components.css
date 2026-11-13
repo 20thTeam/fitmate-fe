@@ -565,7 +565,6 @@ button.check-item:hover { color: #fff; }
 .hud .ring-max { font-size: 19px; font-weight: 700; }
 .ring.is-done .ring-value, .ring.is-done .ring-max { color: var(--c-ring-done); }
 .hud-action { min-height: 92px; font-size: 28px; font-weight: 800; border-radius: var(--radius); justify-content: space-between; padding: 0 26px; }
-.hud-action.is-ready { background: linear-gradient(90deg, #4f9a45, #7fd36b); box-shadow: 0 0 0 4px rgba(127, 211, 107, 0.35); animation: hud-ready 1.4s ease-in-out infinite; }
 @keyframes hud-ready { 50% { box-shadow: 0 0 0 10px rgba(127, 211, 107, 0.12); } }
 .hud-sub { font-size: 16px; color: var(--c-text-soft); text-decoration: underline; padding: 6px; align-self: center; }
 .hud-sub:hover { color: #fff; }
@@ -639,7 +638,7 @@ button.check-item:hover { color: #fff; }
 .coach-bubble.is-pop { animation: coach-pop 0.28s ease-out; }
 @keyframes coach-pop { from { transform: scale(0.85); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .coach-bubble.is-pop, .hud-action.is-ready { animation: none; }
+  .coach-bubble.is-pop { animation: none; }
 }
 
 /* ───────── 학교 대항 챌린지: 남은 10초·5초 긴박감 (/univ-contest) ───────── */

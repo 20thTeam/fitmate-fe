@@ -460,8 +460,8 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
                 <button className="btn btn-sm btn-secondary" onClick={() => workout.addPostureNote({ kind: 'good', text: '스쿼트 깊이가 좋아요' })}>[개발용] 칭찬</button>
               </>}
               action={
-                // 목표를 채우면 초록으로 깜빡여 다음 단계로 넘어가라고 알린다. 자동으로 넘기지는 않는다 (F-SZCKIV)
-                <button className={`btn btn-brown hud-action ${isSetDone ? 'is-ready' : ''}`} disabled={isSaving} onClick={handleNext}>
+                // 목표 전에도 넘어갈 수 있게 늘 둔다 (인식 실패·목표를 못 채운 경우). 다 채우면 눈높이 카드가 대신 눈에 띈다
+                <button className="btn btn-brown hud-action" disabled={isSaving} onClick={handleNext}>
                   {nextLabel}<span aria-hidden>&gt;</span>
                 </button>
               }
@@ -477,7 +477,7 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
               friends={friendStrip}
               controls={<span className="t-small t-soft">시간이 지나도 자동으로 넘어가지 않아요</span>}
               action={
-                <button className={`btn btn-brown hud-action ${restLeftSec === 0 ? 'is-ready' : ''}`} disabled={!camera.isOn} onClick={handleStartNextExercise}>
+                <button className="btn btn-brown hud-action" disabled={!camera.isOn} onClick={handleStartNextExercise}>
                   {next.name} 시작<span aria-hidden>&gt;</span>
                 </button>
               }
