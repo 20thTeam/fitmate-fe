@@ -6,6 +6,7 @@ export const BONE = {
   hips: 'mixamorigHips',
   spine: 'mixamorigSpine',
   neck: 'mixamorigNeck',
+  head: 'mixamorigHead',
   leftArm: 'mixamorigLeftArm',
   leftForeArm: 'mixamorigLeftForeArm',
   leftHand: 'mixamorigLeftHand',
@@ -151,14 +152,20 @@ function kneeDeg(w: Float32Array, a: number, b: number, c: number) {
 }
 
 export interface PoseRig {
-  /** world: livePose.world 형식 ([x, y, z, visibility] × 33), now: performance.now(). 매 프레임 불러도 새 객체를 만들지 않는다 */
-  apply: (world: Float32Array, now: number) => void
+  /**
+   * world: livePose.world 형식 ([x, y, z, visibility] × 33), now: performance.now(). 매 프레임 불러도 새 객체를 만들지 않는다.
+   * isFeetFlat: 발을 바닥에 평평하게 둔다. 엎드린 자세(플랭크)는 끄면 발끝이 바닥을 짚는다
+   */
+  apply: (world: Float32Array, now: number, isFeetFlat?: boolean) => void
   /** 팔을 내린 기본 자세로 돌린다 */
   relax: () => void
 }
 
-/** 모델 하나에 관절 좌표를 입히는 도구. 준비할 때 한 번 만든다 (뼈를 찾고 기본 자세를 기억한다). */
-export function createPoseRig(model: Object3D): PoseRig | null {
+/**
+ * 모델 하나에 관절 좌표를 입히는 도구. 준비할 때 한 번 만든다 (뼈를 찾고 기본 자세를 기억한다).
+ * isSmoothed: 카메라 좌표의 떨림을 거른다. 코드로 만든 매끄러운 좌표(AI 코치 시범)는 끄면 늦지 않고 그대로 따라간다
+ */
+export function createPoseRig(model: Object3D, { isSmoothed = true }: { isSmoothed?: boolean } = {}): PoseRig | null {
   const parts = SEGMENTS.map((s) => {
     const bone = model.getObjectByName(s.bone)
     const child = model.getObjectByName(s.child)
@@ -268,7 +275,7 @@ export function createPoseRig(model: Object3D): PoseRig | null {
     model.position.set(baseX, baseY, baseZ)
   }
 
-  const apply = (w: Float32Array, now: number) => {
+  const apply = (w: Float32Array, now: number, isFeetFlat = true) => {
     // 몸 방향을 먼저 돌려 두면 팔다리는 월드 방향으로 맞추니 같이 따라온다
     updateYaw(w)
     model.rotation.y = yaw
@@ -307,7 +314,7 @@ export function createPoseRig(model: Object3D): PoseRig | null {
       target.set(-(tx / nt - fx / nf), -(ty / nt - fy / nf), -(tz / nt - fz / nf) * s.depth)
       if (target.lengthSq() < 1e-8) continue
       target.normalize()
-      if (s.hasDir) {
+      if (s.hasDir && isSmoothed) {
         // 방향 차이가 작으면(가만히 있을 때의 흔들림) 거의 안 따라가고, 크면 빨리 따라간다
         const gap = s.dir.angleTo(target)
         const follow = STILL_FOLLOW + (1 - s.smoothing - STILL_FOLLOW) * smoothstep(toRad(STILL_DEG), toRad(MOVE_DEG), gap)
@@ -318,7 +325,8 @@ export function createPoseRig(model: Object3D): PoseRig | null {
       s.seenAt = now
       aimShare(s)
     }
-    keepFeetFlat()
+    if (isFeetFlat) keepFeetFlat()
+    else feet.forEach(({ foot }, i) => foot.quaternion.copy(footRest[i]))
     // 다리를 굽히면 발이 떠서, 발끝이 기본 자세 높이에 오도록 몸을 내린다
     model.position.y += restFoot - lowestFoot()
     feetCenter(footMid)

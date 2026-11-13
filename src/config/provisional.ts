@@ -104,19 +104,3 @@ export const PROVISIONAL_ESTIMATE = {
 
 /** 미정: 난이도 이름. 목표량을 올린 횟수로 정한다. 난이도 기준이 정해지면 루틴 응답 값으로 바꾼다. */
 export const provisionalDifficulty = (difficultyStep = 0) => (difficultyStep <= 0 ? '쉬움' : difficultyStep === 1 ? '보통' : '도전')
-
-/**
- * 미정: 운동방 가운데 스크린에 틀 따라하기 영상(YouTube 영상 ID).
- * 영상이 정해지면 exerciseId별로 채운다. 비어 있으면 동작 안내 카드를 보여준다.
- */
-/** 시연 확인용으로 모든 운동에 같은 영상을 넣어 둔다. 운동별 영상이 정해지면 바꾼다 */
-const TEST_GUIDE_VIDEO = 'jpTQdM7okkI'
-export const PROVISIONAL_GUIDE_VIDEOS: Record<string, string> = {
-  squat: TEST_GUIDE_VIDEO,
-  lunge: TEST_GUIDE_VIDEO,
-  hip_hinge: TEST_GUIDE_VIDEO,
-  plank: TEST_GUIDE_VIDEO,
-  jumping_jack: TEST_GUIDE_VIDEO,
-  high_knees: TEST_GUIDE_VIDEO,
-  aerobic_jumping_jack: TEST_GUIDE_VIDEO,
-}

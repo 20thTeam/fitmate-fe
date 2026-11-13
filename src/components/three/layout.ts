@@ -1,5 +1,5 @@
 // 3D 운동방 배치 값과, 3D 좌표 위에 DOM(스크린 내용·이름표)을 겹치는 계산.
-// 스크린 내용은 3D 안이 아니라 같은 React 트리의 DOM이라 YouTube iframe이 다시 로드되지 않는다.
+// 스크린 내용은 3D 안이 아니라 같은 React 트리의 DOM이라, 3D가 다시 그려져도 내용이 다시 만들어지지 않는다.
 import { Vector3, type Camera } from 'three'
 
 // Figma 1:5: 스크린 아랫변이 무대 바닥에 거의 닿고, 가로:세로가 약 2:1
@@ -7,21 +7,23 @@ export const SCREEN_W = 8.8
 export const SCREEN_H = 4.3
 /** 스크린 가운데 위치. 카메라도 이 근처를 바라본다. */
 export const SCREEN_CENTER: [number, number, number] = [0, 0.4 + SCREEN_H / 2, -2.6]
+/** 스크린 왼쪽에서 AI 코치 시범 칸이 차지하는 비율. 오른쪽에는 동작 이름·설명 DOM이 온다 */
+export const COACH_SCREEN_RATIO = 0.45
 /** 스크린 안 DOM 크기(px). 실제 화면 크기는 카메라 위치에 따라 matrix3d로 늘이고 줄인다. */
 export const SCREEN_PX_W = 640
 export const SCREEN_PX_H = Math.round((SCREEN_PX_W * SCREEN_H) / SCREEN_W)
 /** 스크린 판 앞면 z (틀 두께의 절반 + 조금) */
 export const SCREEN_FACE_Z = SCREEN_CENTER[2] + 0.16
 
-export const BODY_R = 0.36
+export const BODY_R = 0.72
 /** 3D 모델 캐릭터 키. 원본은 1.9m라 무대·스크린 크기에 맞춰 줄인다 */
-export const MODEL_H = 1.0
+export const MODEL_H = 2.0
 /**
  * 캐릭터 줄 위치. 스크린 아랫변과 하단 패널 사이에 보이게 둔다.
  * 대기 화면은 하단 패널이 얇아 앞쪽에, 운동 중에는 패널이 커서 스크린 바로 앞에 세운다.
  */
 export const ROW_Z = { tour: 4.3, front: 0.6 } as const
-const GAP = 1.4
+const GAP = 2.2
 /**
  * 이름표 높이. 대기 화면은 머리 위, 운동 중에는 카메라가 낮아 머리 위 이름표가
  * 스크린 아래 테두리에 겹쳐서 발밑에 단다 (#7).

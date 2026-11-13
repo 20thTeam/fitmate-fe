@@ -5,17 +5,14 @@
 // 이름표는 Room3D가 DOM으로 겹친다.
 import { Suspense, useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { useGLTF } from '@react-three/drei'
-import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
-import { Box3, BufferAttribute, Color, SphereGeometry, type Group, type Material, type Mesh } from 'three'
+import { BufferAttribute, Color, SphereGeometry, type Group, type Material, type Mesh } from 'three'
 import type { Participant } from '../../types/domain'
 import { characterOf } from '../../config/characters'
 import { hasFreshLivePose, livePose } from '../../lib/pose/livePose'
 import { freshPeerPose } from '../../lib/pose/peerPoses'
 import ThreeBoundary from './ThreeBoundary'
-import { createPoseRig, relaxArms } from './rig'
-
-import { BODY_R, MODEL_H, figureX } from './layout'
+import { useCharacterModel } from './useCharacterModel'
+import { BODY_R, figureX } from './layout'
 
 /** 운동 중 통통 튀는 높이 */
 const BOUNCE_H = BODY_R * 0.4
@@ -94,37 +91,6 @@ function BallBody({ characterId, index, isExercising, isFaded }: BodyProps) {
       ))}
     </>
   )
-}
-
-/**
- * GLB를 참가자마다 복제해서 쓴다. 같은 캐릭터를 여러 명이 골라도 뼈대가 따로 움직여야 해서
- * 뼈대까지 복제하고, 흐리게 하는 값이 서로 번지지 않게 재질도 복제한다.
- */
-function useCharacterModel(url: string) {
-  const { scene } = useGLTF(url, false, false)
-  const { model, materials, rig } = useMemo(() => {
-    const root = cloneSkinned(scene)
-    const cloned: Material[] = []
-    root.traverse((o) => {
-      const mesh = o as Mesh
-      if (!mesh.isMesh) return
-      mesh.castShadow = true
-      const own = (mesh.material as Material).clone()
-      mesh.material = own
-      cloned.push(own)
-    })
-    // 키는 T자세에서 재고(팔을 내려도 키는 같다), 발바닥을 바닥(y=0)에 맞춘다
-    root.updateMatrixWorld(true)
-    const box = new Box3().setFromObject(root)
-    const scale = MODEL_H / Math.max(box.max.y - box.min.y, 0.001)
-    relaxArms(root)
-    root.scale.setScalar(scale)
-    root.position.y = -box.min.y * scale
-    // 팔을 내린 자세를 기본 자세로 기억한다
-    return { model: root, materials: cloned, rig: createPoseRig(root) }
-  }, [scene])
-  useEffect(() => () => materials.forEach((m) => m.dispose()), [materials])
-  return { model, rig }
 }
 
 function ModelBody({ url, userId, index, isExercising, isFaded, isSelf }: BodyProps & { url: string; isSelf: boolean }) {
