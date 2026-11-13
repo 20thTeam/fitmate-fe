@@ -5,7 +5,7 @@ import { useApp } from '../store/app'
 import { goalLabel, type FriendRoom, type Participant, type Profile, type Routine, type WorkoutSession } from '../types/domain'
 import { PARTY_MAX, PROVISIONAL_REST_SECONDS, provisionalDifficulty } from '../config/provisional'
 import { guideOf, ROUTINE_THUMB } from '../config/exercises'
-import { amountLabel, shortAmountLabel } from '../lib/format'
+import { amountLabel } from '../lib/format'
 import { estimateKcal, estimateMinutes } from '../lib/estimate'
 import { useRoom } from '../hooks/useRoom'
 import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
@@ -13,14 +13,17 @@ import { useWorkout } from '../hooks/useWorkout'
 import { useNow } from '../hooks/useNow'
 import { useToast } from '../hooks/useToast'
 import { useRepCounting } from '../hooks/useRepCounting'
+import { useCoachVoice } from '../hooks/useCoachVoice'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
-import ParticipantPanel, { OnlineCount } from '../components/room/ParticipantPanel'
-import { RoutineOrderPanel, RoutineProgressPanel } from '../components/room/RoutinePanels'
+import ParticipantPanel, { FriendStrip, OnlineCount } from '../components/room/ParticipantPanel'
+import { RoutineOrderPanel, RoutineStepBar } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
-import PoseStatus from '../components/room/PoseStatus'
+import CoachBubble from '../components/room/CoachBubble'
+import MyCameraPanel from '../components/room/MyCameraPanel'
+import VoiceToggle from '../components/room/VoiceToggle'
 import InviteModal from '../components/room/InviteModal'
 import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
@@ -115,6 +118,9 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
   const isLast = workout.index + 1 >= routine.items.length
   const isLastSet = item ? workout.setNo >= item.sets : true
   const isWorkingOut = phase === 'play' || phase === 'rest'
+  const setTarget = item?.targetReps ?? item?.targetSeconds
+  const isSetDone = !!setTarget && workout.setProgress >= setTarget
+  const voice = useCoachVoice()
 
   // 카메라로 유효 횟수 세기 (F-XNIIJM). 모델은 카메라 확인 단계부터 미리 받는다
   const poseCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -320,11 +326,22 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
     />
   )
 
+  // 운동 중 하단 '친구 현황' (오른쪽 친구 패널을 가로로 옮김)
+  const friendsTitle = <span className="row between">친구 현황<OnlineCount participants={room.participants} selfId={profile.userId} /></span>
+  const friendStrip = (
+    <FriendStrip
+      participants={room.participants}
+      selfId={profile.userId}
+      maxShown={PARTY_MAX - 1}
+      onCheer={handleCheer}
+      emptyText="아직 친구가 없어요. 친구가 들어오면 여기에 횟수가 보여요."
+    />
+  )
+
   // 운동 중에는 바로 다음 운동, 휴식 중에는 곧 시작할 운동
   const next = routine.items[workout.index + 1]
   // 휴식 직후 첫 1초는 시계가 이전 값이라 상한을 둔다
   const restLeftSec = Math.min(PROVISIONAL_REST_SECONDS, Math.max(0, Math.ceil((PROVISIONAL_REST_SECONDS * 1000 - (now - restStartedAt)) / 1000)))
-  const upcoming = phase === 'rest' ? routine.items[workout.index + 2] : next
   // AI 코치 시범: 운동 중에는 지금 운동, 휴식 중에는 다음 운동을 보여준다. 3D를 못 쓰면 기존 안내 카드
   const coachExerciseId = phase === 'play' ? item.exerciseId : phase === 'rest' ? next?.exerciseId : undefined
   const hasCoach = !!coachExerciseId && canUseWebGL()
@@ -379,62 +396,66 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
 
       {isWorkingOut && (
         <>
-          <div className="col" style={{ position: 'absolute', right: 20, top: 110, bottom: 220, width: 242, gap: 14 }}>
-            {friendPanel}
-            <RoutineProgressPanel
-              heading={goalLabel(routine.goal)}
-              items={routine.items}
-              activeIndex={phase === 'rest' ? workout.index + 1 : workout.index}
-              guide={guideOf(phase === 'rest' && next ? next.exerciseId : item.exerciseId)}
-            />
-          </div>
+          <RoutineStepBar
+            items={routine.items}
+            activeIndex={phase === 'rest' ? workout.index + 1 : workout.index}
+            setNo={phase === 'play' ? workout.setNo : undefined}
+            isResting={phase === 'rest'}
+          />
+          <MyCameraPanel
+            stream={camera.stream}
+            isCameraOn={camera.isOn}
+            overlay={phase === 'play' && <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
+            footer={<VoiceToggle voice={voice} />}
+          />
+          {phase === 'play' && (
+            <CoachBubble notes={record.postureNotes} {...counting} isRunning={workout.isRunning} onRetry={counting.retry} onSpeak={voice.speak} />
+          )}
 
           {phase === 'play' ? (
             <WorkoutHud
               exerciseId={item.exerciseId}
               name={item.name}
-              desc={guideOf(item.exerciseId)}
               meta={`세트 ${workout.setNo} / ${item.sets} · 목표 ${amountLabel(item)}`}
-              ring={{ value: workout.setProgress, max: item.targetReps ?? item.targetSeconds, unit: item.targetReps ? '회' : '초' }}
-              stream={camera.stream}
-              isCameraOn={camera.isOn}
-              notes={record.postureNotes}
-              next={next ? { exerciseId: next.exerciseId, name: next.name, amount: shortAmountLabel(next) } : null}
-              cameraOverlay={<>
-                <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />
-                <PoseStatus {...counting} isRunning={workout.isRunning} onRetry={counting.retry} />
-              </>}
+              ring={{ value: workout.setProgress, max: setTarget, unit: item.targetReps ? '회' : '초', isDone: isSetDone }}
+              friendsTitle={friendsTitle}
+              friends={friendStrip}
               controls={<>
-                <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={16} height={16} />자세 가이드 보기</button>
+                <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={18} height={18} />자세 가이드</button>
                 {workout.isRunning
                   ? <button className="btn btn-dark btn-sm" onClick={workout.pause}>일시정지</button>
                   : <button className="btn btn-dark btn-sm" disabled={!camera.isOn} onClick={workout.start}>다시 시작</button>}
               </>}
-              devTools={import.meta.env.DEV && (item.targetReps
-                ? <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidRep()}>[개발용] 유효 +1회</button>
-                : <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidSeconds(5)}>[개발용] 유효 +5초</button>)}
-              nextAction={<>
-                <button className="btn btn-brown btn-sm grow" style={{ padding: 0 }} disabled={isSaving} onClick={handleNext}>
-                  {!isLastSet ? '다음 세트' : isLast ? '운동 마치기' : '다음 운동'} &gt;
-                </button>
-                <button className="btn btn-rose btn-sm grow" style={{ padding: 0 }} onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>
+              devTools={import.meta.env.DEV && <>
+                {item.targetReps
+                  ? <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidRep()}>[개발용] 유효 +1회</button>
+                  : <button className="btn btn-sm btn-secondary" onClick={() => workout.countValidSeconds(5)}>[개발용] 유효 +5초</button>}
+                <button className="btn btn-sm btn-secondary" onClick={() => workout.addPostureNote({ kind: 'fix', text: '조금 더 깊이 앉아 주세요' })}>[개발용] 교정</button>
+                <button className="btn btn-sm btn-secondary" onClick={() => workout.addPostureNote({ kind: 'good', text: '스쿼트 깊이가 좋아요' })}>[개발용] 칭찬</button>
               </>}
+              action={
+                // 목표를 채우면 초록으로 깜빡여 다음 단계로 넘어가라고 알린다. 자동으로 넘기지는 않는다 (F-SZCKIV)
+                <button className={`btn btn-brown hud-action ${isSetDone ? 'is-ready' : ''}`} disabled={isSaving} onClick={handleNext}>
+                  {!isLastSet ? '다음 세트' : isLast ? '운동 마치기' : '다음 운동'}<span aria-hidden>&gt;</span>
+                </button>
+              }
+              subAction={<button className="hud-sub" onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>}
             />
           ) : next && (
             <WorkoutHud
               exerciseId={next.exerciseId}
               name="잠깐 쉬어요"
-              desc={`다음 운동은 ${next.name}(${amountLabel(next)})이에요. 준비되면 시작해요. 시간이 지나도 자동으로 넘어가지 않아요.`}
-              meta={<span className="row" style={{ gap: 6 }}>휴식 시간 <ProvisionalBadge /></span>}
+              meta={<span className="row wrap" style={{ gap: 8 }}>다음: {next.name} · {amountLabel(next)} <ProvisionalBadge>휴식 시간 시연용 임시</ProvisionalBadge></span>}
               ring={{ value: restLeftSec, max: PROVISIONAL_REST_SECONDS, unit: '초' }}
-              stream={camera.stream}
-              isCameraOn={camera.isOn}
-              notes={record.postureNotes}
-              next={upcoming ? { exerciseId: upcoming.exerciseId, name: upcoming.name, amount: shortAmountLabel(upcoming) } : null}
-              controls={
-                <button className="btn btn-brown btn-sm" disabled={!camera.isOn} onClick={handleStartNextExercise}>{next.name} 시작 &gt;</button>
+              friendsTitle={friendsTitle}
+              friends={friendStrip}
+              controls={<span className="t-small t-soft">시간이 지나도 자동으로 넘어가지 않아요</span>}
+              action={
+                <button className={`btn btn-brown hud-action ${restLeftSec === 0 ? 'is-ready' : ''}`} disabled={!camera.isOn} onClick={handleStartNextExercise}>
+                  {next.name} 시작<span aria-hidden>&gt;</span>
+                </button>
               }
-              nextAction={<button className="btn btn-rose btn-sm btn-block" onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>}
+              subAction={<button className="hud-sub" onClick={() => setIsEndConfirmOpen(true)}>운동 끝내기</button>}
             />
           )}
         </>
