@@ -8,7 +8,7 @@ import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
 import { localContest } from './contest'
-import { getSunsetStatus } from '../../lib/sunset'
+import { devSunsetOverride, readLocalSunsetMode, sunsetStatusWithMode, writeLocalSunsetMode } from '../../lib/sunset'
 
 const KEY = {
   profile: 'fitmate.profile',
@@ -86,7 +86,7 @@ const team: TeamService = {
 
 const publicParty: PublicPartyService = {
   async getStatus() {
-    return getSunsetStatus()
+    return devSunsetOverride() ?? sunsetStatusWithMode(readLocalSunsetMode())
   },
 }
 
@@ -98,6 +98,15 @@ const admin: AdminService = {
   },
   async clearDevice() {
     clearAll()
+  },
+  needsAdminKey: false,
+  async getPublicParty() {
+    const mode = readLocalSunsetMode()
+    return { mode, status: sunsetStatusWithMode(mode) }
+  },
+  async setPublicPartyMode(mode) {
+    writeLocalSunsetMode(mode)
+    return { mode, status: sunsetStatusWithMode(mode) }
   },
 }
 
