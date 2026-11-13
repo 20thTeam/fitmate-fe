@@ -13,15 +13,15 @@ export const SCREEN_PX_H = Math.round((SCREEN_PX_W * SCREEN_H) / SCREEN_W)
 /** 스크린 판 앞면 z (틀 두께의 절반 + 조금) */
 export const SCREEN_FACE_Z = SCREEN_CENTER[2] + 0.16
 
-export const BODY_R = 0.36
+export const BODY_R = 0.72
 /** 3D 모델 캐릭터 키. 원본은 1.9m라 무대·스크린 크기에 맞춰 줄인다 */
-export const MODEL_H = 1.0
+export const MODEL_H = 2.0
 /**
  * 캐릭터 줄 위치. 스크린 아랫변과 하단 패널 사이에 보이게 둔다.
  * 대기 화면은 하단 패널이 얇아 앞쪽에, 운동 중에는 패널이 커서 스크린 바로 앞에 세운다.
  */
 export const ROW_Z = { tour: 4.3, front: 0.6 } as const
-const GAP = 1.4
+const GAP = 2.2
 /**
  * 이름표 높이. 대기 화면은 머리 위, 운동 중에는 카메라가 낮아 머리 위 이름표가
  * 스크린 아래 테두리에 겹쳐서 발밑에 단다 (#7).
