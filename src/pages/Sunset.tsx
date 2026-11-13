@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
 import { services } from '../services'
 import { SUNSET_ROOM_ID, useApp } from '../store/app'
-import type { Participant, Profile, WorkoutSession } from '../types/domain'
+import type { Participant, Profile, PublicPartySchedule, WorkoutSession } from '../types/domain'
 import { SUNSET_EXERCISE } from '../config/provisional'
 import { guideOf, ROUTINE_THUMB } from '../config/exercises'
 import { clockLabel } from '../lib/format'
-import { sunsetHourLabel } from '../lib/sunset'
+import { isProvisionalSchedule, sunsetHourLabel } from '../lib/sunset'
 import { useSunsetStatus } from '../hooks/useSunsetStatus'
 import { useRoom } from '../hooks/useRoom'
 import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
@@ -47,14 +47,14 @@ export default function Sunset() {
   const canEnter = !isChecking && status.isOpen
   if (canEnter && !hasEntered) setHasEntered(true)
 
-  if (hasEntered) return <SunsetRoom profile={profile} closesAt={status.closesAt} />
+  if (hasEntered) return <SunsetRoom profile={profile} closesAt={status.closesAt} schedule={status.schedule} />
   // 임시 운영 시각으로는 열린 시간이라도 서버 확인을 기다린다 (서버 운영 시각이 다를 수 있음)
   if (status.isOpen) return <EnterLoading theme="public" title="공개 운동방 운영 시간을 확인하는 중..." steps={[{ label: '운영 시간 확인', isDone: false }]} />
-  return <SunsetClosed nextOpenAt={status.nextOpenAt} />
+  return <SunsetClosed nextOpenAt={status.nextOpenAt} schedule={status.schedule} />
 }
 
 /** 오픈 전에는 미리보기와 다음 오픈 시각 (F-DXORMB 권장안) */
-function SunsetClosed({ nextOpenAt }: { nextOpenAt: number }) {
+function SunsetClosed({ nextOpenAt, schedule }: { nextOpenAt: number; schedule: PublicPartySchedule }) {
   const opensAt = new Date(nextOpenAt).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
   return (
     <Scene theme="public" screen={<GuideScreen idleTitle={`다음 오픈: ${opensAt}`} idleDesc="공개 운동방이 열리면 다른 참가자들과 자유롭게 에어로빅을 즐길 수 있어요." />}>
@@ -69,8 +69,8 @@ function SunsetClosed({ nextOpenAt }: { nextOpenAt: number }) {
           caption="오늘의 운동"
           title="선셋 에어로빅"
           chip={<span className="chip chip-ghost">오픈 전</span>}
-          stats={[{ label: '운영 시간', value: sunsetHourLabel() }]}
-          note={<ProvisionalBadge>운영 시각 임시</ProvisionalBadge>}
+          stats={[{ label: '운영 시간', value: sunsetHourLabel(schedule) }]}
+          note={isProvisionalSchedule(schedule) && <ProvisionalBadge>운영 시각 임시</ProvisionalBadge>}
           action={<button className="btn btn-brown" style={{ minWidth: 168, height: 56, fontSize: 20 }} disabled>오픈 전</button>}
         />
       </div>
@@ -83,7 +83,7 @@ function SunsetClosed({ nextOpenAt }: { nextOpenAt: number }) {
 
 type Phase = 'lobby' | 'camera' | 'entering' | 'play'
 
-function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number | null }) {
+function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesAt: number | null; schedule: PublicPartySchedule }) {
   const nav = useNavigate()
   const room = useRoom(SUNSET_ROOM_ID, profile, { maxParticipants: null, initial: { status: 'waiting' } })
   const camera = useCamera()
@@ -251,10 +251,10 @@ function SunsetRoom({ profile, closesAt }: { profile: Profile; closesAt: number 
               title="선셋 에어로빅"
               chip={<span className="chip chip-easy">{isClosed ? '마감' : '오픈 중'}</span>}
               stats={[
-                { label: '운영 시간', value: sunsetHourLabel() },
+                { label: '운영 시간', value: sunsetHourLabel(schedule) },
                 { label: '현재 참가자', value: `${room.participants.length}명` },
               ]}
-              note={<ProvisionalBadge>운영 시각 임시</ProvisionalBadge>}
+              note={isProvisionalSchedule(schedule) && <ProvisionalBadge>운영 시각 임시</ProvisionalBadge>}
               action={
                 <button className="btn btn-brown" style={{ minWidth: 168, height: 56, fontSize: 20, justifyContent: 'space-between' }} disabled={isClosed} onClick={() => setPhase('camera')}>
                   {isClosed ? '운영 끝' : <>시작하기<span aria-hidden>&gt;</span></>}

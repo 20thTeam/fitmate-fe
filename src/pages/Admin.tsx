@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { services, type AdminPublicParty, type AdminRoom } from '../services'
-import type { PublicPartyMode } from '../types/domain'
-import { sunsetOpenLabel } from '../lib/sunset'
+import type { PublicPartyMode, PublicPartySchedule } from '../types/domain'
+import { SCHEDULE_DURATION_RANGE, durationLabel, isValidSchedule, sunsetOpenLabel } from '../lib/sunset'
 import { useApp } from '../store/app'
 import Backdrop from '../components/Backdrop'
 import { CenterMessage, Logo } from '../components/ui'
@@ -101,7 +101,56 @@ function adminErrorMessage(e: unknown) {
   const status = errorStatus(e)
   if (status === 401) return '운영 키가 맞지 않아요. 다시 입력해 주세요.'
   if (status === 403) return '서버에 운영 키가 설정되지 않았어요. BE에 서버 ADMIN_KEY 설정을 요청해 주세요.'
+  if (status === 404) return '서버에 이 운영 API가 아직 없어요. BE 배포를 기다려 주세요.'
+  if (status === 400) return '서버가 이 값을 받지 않았어요. 입력한 값을 확인해 주세요.'
   return '공개 운동방 상태를 불러오지 못했어요. 서버가 켜져 있는지 확인해 주세요.'
+}
+
+/** 매일 여는 시각·운영 시간 (#41). 한국 시간 기준 */
+function ScheduleForm({ schedule, isSaving, onSave }: { schedule: PublicPartySchedule; isSaving: boolean; onSave: (s: PublicPartySchedule) => void }) {
+  const [openTime, setOpenTime] = useState(schedule.openTime)
+  const [durationInput, setDurationInput] = useState(String(schedule.durationMin))
+  const next = { openTime, durationMin: Number(durationInput) }
+  const isValid = isValidSchedule(next)
+  const isChanged = next.openTime !== schedule.openTime || next.durationMin !== schedule.durationMin
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    if (isValid && isChanged) onSave(next)
+  }
+
+  return (
+    <form className="col" style={{ gap: 8, borderTop: '1px dashed rgba(255,255,255,0.55)', paddingTop: 14 }} onSubmit={handleSubmit}>
+      <span className="t-small t-soft">매일 운영 시각 (한국 시간)</span>
+      <div className="row wrap" style={{ gap: 12, alignItems: 'center' }}>
+        <label className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="t-small">여는 시각</span>
+          <input className="input" type="time" step={300} required value={openTime} onChange={(e) => setOpenTime(e.target.value)} style={{ width: 140 }} />
+        </label>
+        <label className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="t-small">운영 시간</span>
+          <input
+            className="input"
+            type="number"
+            min={SCHEDULE_DURATION_RANGE.min}
+            max={SCHEDULE_DURATION_RANGE.max}
+            step={5}
+            required
+            value={durationInput}
+            onChange={(e) => setDurationInput(e.target.value)}
+            style={{ width: 100 }}
+          />
+          <span className="t-small">분</span>
+        </label>
+        <button type="submit" className="btn btn-primary" disabled={!isValid || !isChanged || isSaving}>{isSaving ? '저장 중…' : '운영 시각 저장'}</button>
+      </div>
+      <span className="t-small t-soft">
+        {isValid
+          ? `저장하면 ${sunsetOpenLabel(next)} (${durationLabel(next.durationMin)}). 운영 방식이 '운영 시각대로'일 때 이 시각에 열고 닫아요.`
+          : `운영 시간은 ${SCHEDULE_DURATION_RANGE.min}~${SCHEDULE_DURATION_RANGE.max}분 사이로 입력해 주세요.`}
+      </span>
+    </form>
+  )
 }
 
 /** 'missing' = 서버에 이 운영 API가 아직 없음 */
@@ -115,6 +164,7 @@ function PublicPartyPanel() {
   const [party, setParty] = useState<PartyState>(null)
   const [isLoading, setIsLoading] = useState(() => !needsKey || readAdminKey() !== '')
   const [savingMode, setSavingMode] = useState<PublicPartyMode | null>(null)
+  const [isSavingSchedule, setIsSavingSchedule] = useState(false)
   const [error, setError] = useState('')
   const [retryKey, setRetryKey] = useState(0)
   const hasKey = !needsKey || adminKey !== ''
@@ -178,6 +228,22 @@ function PublicPartyPanel() {
     }
   }
 
+  const handleSetSchedule = async (schedule: PublicPartySchedule) => {
+    setIsSavingSchedule(true)
+    setError('')
+    try {
+      setParty(await services.admin.setPublicPartySchedule(schedule, adminKey))
+    } catch (e) {
+      setError(adminErrorMessage(e))
+      if (errorStatus(e) === 401) {
+        saveAdminKey('')
+        setAdminKey('')
+      }
+    } finally {
+      setIsSavingSchedule(false)
+    }
+  }
+
   const loaded = party && party !== 'missing' ? party : null
   const status = loaded?.status
 
@@ -190,7 +256,7 @@ function PublicPartyPanel() {
           {hasKey && <button className="btn btn-secondary btn-sm" disabled={isLoading} onClick={handleRefresh}>{isLoading ? '확인 중…' : '새로고침'}</button>}
         </div>
       </div>
-      <p className="t-small t-soft">{sunsetOpenLabel()}. 시연 시간이 다르면 여기서 열고 닫아요. 닫아도 이미 들어와 운동 중인 사람의 기록은 끝까지 저장돼요.</p>
+      <p className="t-small t-soft">{status ? `${sunsetOpenLabel(status.schedule)}. ` : ''}운영 시각을 바꾸거나, 시각과 상관없이 바로 열고 닫을 수 있어요. 닫아도 이미 들어와 운동 중인 사람의 기록은 끝까지 저장돼요.</p>
 
       {!hasKey ? (
         <form className="row wrap" style={{ gap: 12, alignItems: 'center' }} onSubmit={handleKeySubmit}>
@@ -236,6 +302,17 @@ function PublicPartyPanel() {
               </button>
             ))}
           </div>
+          {loaded && (loaded.canEditSchedule ? (
+            // 저장된 값이 바뀌면 입력 칸도 새 값으로 다시 채운다
+            <ScheduleForm
+              key={`${loaded.status.schedule.openTime}-${loaded.status.schedule.durationMin}`}
+              schedule={loaded.status.schedule}
+              isSaving={isSavingSchedule}
+              onSave={handleSetSchedule}
+            />
+          ) : (
+            <Pending>운영 시각 API(PUT /api/admin/public-party/schedule)가 서버에 생기면 여기서 매일 여는 시각을 바꿀 수 있어요. 지금은 임시 운영 시각이에요.</Pending>
+          ))}
         </>
       )}
       {error && <p className="t-small" role="alert" style={{ color: 'var(--c-effort)' }}>{error}</p>}

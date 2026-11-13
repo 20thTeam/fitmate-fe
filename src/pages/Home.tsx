@@ -75,7 +75,7 @@ export default function Home() {
                 <span className="chip chip-ghost">{sunset.isOpen ? '오픈 중' : '오픈 전'}</span>
               </div>
               <h2 className="t-h2">선셋 에어로빅</h2>
-              <p className="t-small t-soft" style={{ lineHeight: 1.6 }}>{sunsetOpenLabel()}</p>
+              <p className="t-small t-soft" style={{ lineHeight: 1.6 }}>{sunsetOpenLabel(sunset.schedule)}</p>
               {/* 인원은 서버가 알려 줄 때만 보여준다 */}
               {sunset.isOpen && sunset.participantCount !== null && <p className="t-small">지금 {sunset.participantCount}명 참가 중</p>}
               <span style={{ alignSelf: 'flex-start' }}><ProvisionalBadge>운영 시각 임시</ProvisionalBadge></span>
