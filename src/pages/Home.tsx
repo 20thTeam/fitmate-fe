@@ -8,6 +8,7 @@ import { durationLabel } from '../lib/format'
 import { sunsetOpenLabel } from '../lib/sunset'
 import { useSunsetStatus } from '../hooks/useSunsetStatus'
 import { characterOf } from '../config/characters'
+import { CONTEST_RULES } from '../config/contest'
 import Backdrop from '../components/Backdrop'
 import { Logo, ProvisionalBadge } from '../components/ui'
 import groupIcon from '../assets/icons/group.png'
@@ -15,6 +16,7 @@ import globeIcon from '../assets/icons/globe.png'
 
 // F-HIPEHA 홈. Figma 시안에 없는 화면이라 같은 디자인 시스템으로 맞췄다.
 // 친구 운동이 메인, 공개 운동방(선셋)은 보조 카드 (F-HIPEHA rules)
+// 아래 학교 대항 챌린지 카드는 시연장 이벤트(/univ-contest) 입구라 기획 기능 ID가 없다
 export default function Home() {
   const nav = useNavigate()
   const profile = useApp((s) => s.profile)!
@@ -98,6 +100,15 @@ export default function Home() {
               <button className="btn btn-secondary btn-sm" onClick={() => nav('/history')}>전체 기록 보기</button>
             </section>
           </div>
+
+          <section className="card row between" style={{ gridColumn: '1 / -1', gap: 24, padding: '20px 32px' }} data-theme="public" aria-label="학교 대항 챌린지">
+            <div className="col" style={{ gap: 6 }}>
+              <span className="chip chip-ghost" style={{ alignSelf: 'flex-start' }}>시연장 이벤트</span>
+              <h2 className="t-h2">학교 대항 스쿼트 {CONTEST_RULES.durationMs / 1000}초 챌린지</h2>
+              <p className="t-small t-soft">한 판 최대 {CONTEST_RULES.maxPlayers}명이 동시에 스쿼트하고, 학교별 누적 횟수로 순위를 겨뤄요.</p>
+            </div>
+            <button className="btn btn-plum btn-lg" style={{ flexShrink: 0 }} onClick={() => nav('/univ-contest')}>챌린지 보러 가기 &gt;</button>
+          </section>
         </div>
       </div>
     </Backdrop>

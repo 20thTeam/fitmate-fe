@@ -225,7 +225,7 @@ export default function UnivContest() {
         <Logo isLight />
         <div className="row center wrap" style={{ position: 'absolute', left: 0, right: 0, top: 28, gap: 8, pointerEvents: 'none' }}>
           <span className="chip chip-ghost">학교 대항 스쿼트 20초 챌린지</span>
-          {storage === 'device' && <span className="chip chip-provisional">서버 준비 중 · 이 브라우저에만 저장돼요</span>}
+          {storage === 'device' && <span className="chip chip-provisional">서버 연결 안 됨 · 이 컴퓨터에만 저장돼서 다른 컴퓨터와 같은 판에 못 들어가요</span>}
         </div>
 
         <div className="col" style={{ position: 'absolute', right: 28, top: 90, width: 280, gap: 10 }}>
@@ -278,7 +278,7 @@ export default function UnivContest() {
           <h1 className="t-display">학교 대항 스쿼트 20초 챌린지</h1>
           <div className="row center wrap" style={{ gap: 8 }}>
             <span className="chip chip-ghost">한 판 최대 {CONTEST_RULES.maxPlayers}명 · 20초 동안 많이 한 사람이 1등</span>
-            {storage === 'device' && <span className="chip chip-provisional">서버 준비 중 · 이 브라우저에만 저장돼요</span>}
+            {storage === 'device' && <span className="chip chip-provisional">서버 연결 안 됨 · 이 컴퓨터에만 저장돼서 다른 컴퓨터와 같은 판에 못 들어가요</span>}
           </div>
         </header>
 
