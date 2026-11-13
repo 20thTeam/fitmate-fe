@@ -53,6 +53,8 @@ interface RepSpec {
   setupHint: string
   good: string
   tracks: Track[]
+  /** 트랙이 여러 개일 때, 어느 트랙이든 직전 인정 뒤 이 시간 안에는 다시 세지 않는다 */
+  minGapMs?: number
 }
 
 const STAND_HINT = '머리부터 발끝까지 화면에 보이게 한두 걸음 물러서 주세요'
@@ -155,6 +157,7 @@ const HIGH_KNEES: RepSpec = {
   setupHint: STAND_HINT,
   good: '무릎을 충분히 올렸어요',
   tracks: [kneeLift(0), kneeLift(1)],
+  minGapMs: R.highKnees.minLegGapMs,
 }
 
 const REP_SPECS: Record<string, RepSpec> = {
@@ -181,6 +184,7 @@ function createRepCycleCounter(spec: RepSpec): RepCounter {
     needsRest: true,
   }))
   let needsGood = true
+  let lastAnyRepAt = -Infinity
 
   const reset = () => {
     for (const s of state) {
@@ -241,7 +245,10 @@ function createRepCycleCounter(spec: RepSpec): RepCounter {
         continue
       }
       if (t - s.lastRepAt < (tr.minRepMs ?? R.minRepMs)) continue
+      // 하이 니: 한 번 올린 동작이 양쪽 다리 트랙에서 같이 끝나면 한 번만 센다
+      if (spec.minGapMs && t - lastAnyRepAt < spec.minGapMs) continue
       s.lastRepAt = t
+      lastAnyRepAt = t
       emit({ kind: 'rep' })
       // 첫 유효 동작과 고친 뒤 처음 성공한 동작만 칭찬한다 (피드백 과다 방지)
       if (needsGood) {

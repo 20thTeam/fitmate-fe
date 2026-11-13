@@ -52,8 +52,12 @@ export const PROVISIONAL_POSE_RULES = {
   hipHinge: { leanStand: 15, leanDown: 45, kneeMin: 100 },
   /** 팔 각도(엉덩이-어깨-손목), 발 간격 ÷ 어깨 너비 */
   jumpingJack: { armDown: 45, armUp: 140, feetClosed: 0.9, feetOpen: 1.5 },
-  /** 엉덩이 각도. 다리마다 1회씩 센다 */
-  highKnees: { hipStand: 165, hipUp: 115, minRepMs: 200 },
+  /**
+   * 엉덩이 각도. 다리마다 1회씩 센다.
+   * 한 번 올렸는데 두 다리가 같이 잡히는 경우(좌우 관절 뒤바뀜·몸 숙임)를 막으려고
+   * 다른 다리라도 minLegGapMs 안에 다시 세지 않는다
+   */
+  highKnees: { hipStand: 165, hipUp: 115, minRepMs: 200, minLegGapMs: 250 },
   /**
    * 어깨-엉덩이-발목이 lineMin 이상이면 일직선. 화면에서 몸이 가로선과 maxBodyTilt 이하,
    * 위팔이 세로선과 maxArmTilt 이하이면 엎드려 팔로 받친 자세. settleMs 동안 유지된 뒤부터 센다
