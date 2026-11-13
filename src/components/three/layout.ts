@@ -1,5 +1,5 @@
 // 3D 운동방 배치 값과, 3D 좌표 위에 DOM(스크린 내용·이름표)을 겹치는 계산.
-// 스크린 내용은 3D 안이 아니라 같은 React 트리의 DOM이라 YouTube iframe이 다시 로드되지 않는다.
+// 스크린 내용은 3D 안이 아니라 같은 React 트리의 DOM이라, 3D가 다시 그려져도 내용이 다시 만들어지지 않는다.
 import { Vector3, type Camera } from 'three'
 
 // Figma 1:5: 스크린 아랫변이 무대 바닥에 거의 닿고, 가로:세로가 약 2:1

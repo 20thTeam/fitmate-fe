@@ -1,7 +1,5 @@
 // 운동방 가운데 큰 스크린에 들어가는 내용.
-// 따라하기 영상 ID가 정해진 운동은 YouTube를 틀고, 없으면 동작 안내 카드를 보여준다.
-// 가이드 시범은 내 유효 횟수에 포함되지 않는다.
-import { PROVISIONAL_GUIDE_VIDEOS } from '../../config/provisional'
+// 운동 중에는 동작 안내 카드를 보여준다. 가이드 시범은 내 유효 횟수에 포함되지 않는다.
 import { guideOf, photoOf } from '../../config/exercises'
 
 interface Props {
@@ -13,19 +11,6 @@ interface Props {
 }
 
 export default function GuideScreen({ exerciseId, name, idleTitle, idleDesc }: Props) {
-  const videoId = exerciseId ? PROVISIONAL_GUIDE_VIDEOS[exerciseId] : undefined
-
-  if (videoId) {
-    return (
-      <iframe
-        title={`${name ?? '운동'} 따라하기 영상`}
-        src={`https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&playsinline=1&rel=0`}
-        allow="autoplay; encrypted-media; picture-in-picture"
-        style={{ width: '100%', height: '100%', border: 0 }}
-      />
-    )
-  }
-
   if (!exerciseId) {
     return (
       <div className="col center" style={{ gap: 10, color: '#6b5568', padding: 24 }}>
