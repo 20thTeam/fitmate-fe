@@ -246,12 +246,15 @@ export type RtServerMessage = { roomId: number | null; partyId?: number | null; 
   | { type: 'ERROR'; payload: RtErrorPayload }
 )
 
-/** JOIN 대상. 친구 운동방(REST 입장 필요)과 공개 파티(REST 입장 없음) 중 하나만 보낸다 */
-export type RtJoinTarget = { roomId: number } | { partyId: number }
+/**
+ * JOIN 대상. 친구 운동방(REST 입장 필요)·공개 파티(REST 입장 없음)·학교 대항 챌린지 판 중 하나만 보낸다.
+ * 챌린지 판은 참가자 토큰 없이 판 참가 API가 준 playerId로 들어간다 (fitmate-be#34 댓글로 요청한 형식, 서버 배포 전)
+ */
+export type RtJoinTarget = { roomId: number } | { partyId: number } | { contestGameId: string; playerId: string }
 
 /** 클라이언트 → 서버 */
 export type RtClientMessage =
-  | { type: 'JOIN'; payload: { token: string } & RtJoinTarget }
+  | { type: 'JOIN'; payload: { token?: string } & RtJoinTarget }
   | { type: 'STATUS'; payload: RtStatusPayload }
   | { type: 'POSE'; payload: { landmarks: number[][] } }
   | { type: 'CHEER'; payload: RtCheerPayload }
