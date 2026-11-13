@@ -217,7 +217,8 @@ export type RtConnectionStatus = 'CONNECTED' | 'UNSTABLE'
 export interface RtParticipantView {
   participantId: number
   nickname: string
-  characterCode: string
+  /** 챌린지 판 참가자는 캐릭터를 고르지 않아 null (화면이 판 순서로 정한다) */
+  characterCode: string | null
   exerciseId: number | null
   exerciseName: string | null
   progressStatus: RtProgressStatus
