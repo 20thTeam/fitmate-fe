@@ -13,6 +13,7 @@ import type {
   Profile,
   Routine,
   SessionKind,
+  PublicPartyMode,
   SunsetStatus,
   TeamProgress,
   WorkoutSession,
@@ -109,6 +110,12 @@ export interface AdminRoom {
   team: TeamProgress | null
 }
 
+/** 운영 화면에 보여줄 공개 운동방 운영 모드와 지금 상태 */
+export interface AdminPublicParty {
+  mode: PublicPartyMode
+  status: SunsetStatus
+}
+
 /**
  * 운영 화면(/admin)용. manyfast 기획에 없는 화면이라 기능 ID가 없다.
  * 서버에 운영용 API(전체 참가자·전체 기록·접속자·초기화)가 아직 없어서 지금 있는 공개 API만 쓴다.
@@ -119,6 +126,12 @@ export interface AdminService {
   listRooms(): Promise<AdminRoom[]>
   /** 이 브라우저에 보관한 참가자·루틴·기록을 지운다. 서버 데이터는 그대로 남는다 */
   clearDevice(): Promise<void>
+  /** 운영 키가 있어야 하는지. http는 서버 운영 API에 X-Admin-Key를 보낸다 */
+  readonly needsAdminKey: boolean
+  /** 공개 운동방 운영 모드와 지금 상태. 서버에 이 운영 API가 아직 없으면 null */
+  getPublicParty(adminKey: string): Promise<AdminPublicParty | null>
+  /** 공개 운동방을 시각과 상관없이 열거나 닫는다. AUTO는 운영 시각대로 되돌린다 */
+  setPublicPartyMode(mode: PublicPartyMode, adminKey: string): Promise<AdminPublicParty>
 }
 
 /**

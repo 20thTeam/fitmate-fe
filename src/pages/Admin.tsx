@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { services, type AdminRoom } from '../services'
+import { services, type AdminPublicParty, type AdminRoom } from '../services'
+import type { PublicPartyMode } from '../types/domain'
+import { sunsetOpenLabel } from '../lib/sunset'
 import { useApp } from '../store/app'
 import Backdrop from '../components/Backdrop'
 import { CenterMessage, Logo } from '../components/ui'
@@ -57,6 +59,189 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 const ROOM_COLUMNS = '0.5fr 1.4fr 0.7fr 1.2fr 2fr 1.2fr'
+
+// 서버 운영 키. 배포 파일에 넣으면 누구나 볼 수 있어서 운영자가 입력하고, 탭을 닫으면 잊는다
+const ADMIN_KEY_KEY = 'fitmate-admin-key'
+
+function readAdminKey() {
+  try {
+    return sessionStorage.getItem(ADMIN_KEY_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function saveAdminKey(key: string) {
+  try {
+    if (key) sessionStorage.setItem(ADMIN_KEY_KEY, key)
+    else sessionStorage.removeItem(ADMIN_KEY_KEY)
+  } catch {
+    /* 저장이 막혀 있으면 이번 화면에서만 쓴다 */
+  }
+}
+
+const MODE_BUTTONS: { mode: PublicPartyMode; label: string }[] = [
+  { mode: 'AUTO', label: '운영 시각대로' },
+  { mode: 'OPEN', label: '지금 열기' },
+  { mode: 'CLOSED', label: '닫기' },
+]
+
+const MODE_LABEL: Record<PublicPartyMode, string> = {
+  AUTO: '운영 시각대로',
+  OPEN: '운영자가 열어 둠',
+  CLOSED: '운영자가 닫아 둠',
+}
+
+const formatKst = (t: number) => new Date(t).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+
+/** 서버 오류를 운영자가 할 일로 바꿔 말한다 */
+const errorStatus = (e: unknown) => (typeof e === 'object' && e !== null && 'status' in e ? (e as { status: unknown }).status : 0)
+
+function adminErrorMessage(e: unknown) {
+  const status = errorStatus(e)
+  if (status === 401) return '운영 키가 맞지 않아요. 다시 입력해 주세요.'
+  if (status === 403) return '서버에 운영 키가 설정되지 않았어요. BE에 서버 ADMIN_KEY 설정을 요청해 주세요.'
+  return '공개 운동방 상태를 불러오지 못했어요. 서버가 켜져 있는지 확인해 주세요.'
+}
+
+/** 'missing' = 서버에 이 운영 API가 아직 없음 */
+type PartyState = AdminPublicParty | 'missing' | null
+
+/** 공개 운동방 열기·닫기 (#31). 시연 시간이 운영 시각과 다를 때 쓴다 */
+function PublicPartyPanel() {
+  const needsKey = services.admin.needsAdminKey
+  const [adminKey, setAdminKey] = useState(() => (needsKey ? readAdminKey() : ''))
+  const [keyInput, setKeyInput] = useState('')
+  const [party, setParty] = useState<PartyState>(null)
+  const [isLoading, setIsLoading] = useState(() => !needsKey || readAdminKey() !== '')
+  const [savingMode, setSavingMode] = useState<PublicPartyMode | null>(null)
+  const [error, setError] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
+  const hasKey = !needsKey || adminKey !== ''
+
+  useEffect(() => {
+    if (!hasKey) return
+    const ctrl = new AbortController()
+    const isStale = () => ctrl.signal.aborted
+    services.admin
+      .getPublicParty(adminKey)
+      .then((p) => !isStale() && setParty(p ?? 'missing'))
+      .catch((e: unknown) => {
+        if (isStale()) return
+        setError(adminErrorMessage(e))
+        setParty(null)
+        // 키가 틀렸으면 입력 칸으로 돌아간다
+        if (errorStatus(e) === 401) {
+          saveAdminKey('')
+          setAdminKey('')
+        }
+      })
+      .finally(() => !isStale() && setIsLoading(false))
+    return () => ctrl.abort()
+  }, [adminKey, hasKey, retryKey])
+
+  const handleKeySubmit = (e: FormEvent) => {
+    e.preventDefault()
+    saveAdminKey(keyInput)
+    setAdminKey(keyInput)
+    setKeyInput('')
+    setIsLoading(true)
+    setError('')
+  }
+
+  const handleRefresh = () => {
+    setIsLoading(true)
+    setError('')
+    setRetryKey((k) => k + 1)
+  }
+
+  const handleForgetKey = () => {
+    saveAdminKey('')
+    setAdminKey('')
+    setParty(null)
+    setError('')
+  }
+
+  const handleSetMode = async (mode: PublicPartyMode) => {
+    setSavingMode(mode)
+    setError('')
+    try {
+      setParty(await services.admin.setPublicPartyMode(mode, adminKey))
+    } catch (e) {
+      setError(adminErrorMessage(e))
+      if (errorStatus(e) === 401) {
+        saveAdminKey('')
+        setAdminKey('')
+      }
+    } finally {
+      setSavingMode(null)
+    }
+  }
+
+  const loaded = party && party !== 'missing' ? party : null
+  const status = loaded?.status
+
+  return (
+    <section className="card col" style={{ gap: 14 }}>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 className="t-h3" style={{ color: 'var(--c-title-soft)' }}>공개 운동방</h2>
+        <div className="row" style={{ gap: 8 }}>
+          {needsKey && adminKey && <button className="btn btn-secondary btn-sm" onClick={handleForgetKey}>운영 키 지우기</button>}
+          {hasKey && <button className="btn btn-secondary btn-sm" disabled={isLoading} onClick={handleRefresh}>{isLoading ? '확인 중…' : '새로고침'}</button>}
+        </div>
+      </div>
+      <p className="t-small t-soft">{sunsetOpenLabel()}. 시연 시간이 다르면 여기서 열고 닫아요. 닫아도 이미 들어와 운동 중인 사람의 기록은 끝까지 저장돼요.</p>
+
+      {!hasKey ? (
+        <form className="row wrap" style={{ gap: 12, alignItems: 'center' }} onSubmit={handleKeySubmit}>
+          <input
+            className="input"
+            type="password"
+            autoComplete="off"
+            aria-label="서버 운영 키"
+            placeholder="서버 운영 키"
+            value={keyInput}
+            onChange={(e) => setKeyInput(e.target.value)}
+            style={{ width: 280 }}
+          />
+          <button type="submit" className="btn btn-primary" disabled={keyInput === ''}>확인</button>
+          <span className="t-small t-soft">서버 ADMIN_KEY와 같은 값이에요. 이 탭을 닫으면 다시 물어요.</span>
+        </form>
+      ) : party === 'missing' ? (
+        <Pending>공개 운동방 운영 API(GET·PUT /api/admin/public-party)가 서버에 생기면 여기서 열고 닫을 수 있어요.</Pending>
+      ) : isLoading && !loaded ? (
+        <p className="t-soft" style={{ padding: '18px 0', textAlign: 'center' }}>공개 운동방 상태를 불러오는 중…</p>
+      ) : (
+        <>
+          {status && (
+            <div className="row wrap" style={{ gap: 32 }} role="status">
+              <Field label="지금 상태">{status.isOpen ? <span className="chip chip-good">열림</span> : <span className="chip chip-ghost">닫힘</span>}</Field>
+              <Field label="운영 방식">{MODE_LABEL[loaded.mode]}</Field>
+              <Field label={status.isOpen ? '닫는 시각' : '다음 오픈'}>
+                {status.isOpen ? (status.closesAt === null ? '운영자가 닫을 때까지' : formatKst(status.closesAt)) : formatKst(status.nextOpenAt)}
+              </Field>
+              <Field label="참가 인원">{status.participantCount === null ? <span className="t-muted">-</span> : `${status.participantCount}명`}</Field>
+            </div>
+          )}
+          <div className="row wrap" style={{ gap: 12 }}>
+            {MODE_BUTTONS.map(({ mode, label }) => (
+              <button
+                key={mode}
+                className={`btn ${loaded?.mode === mode ? 'btn-primary' : 'btn-secondary'}`}
+                aria-pressed={loaded?.mode === mode}
+                disabled={!loaded || savingMode !== null}
+                onClick={() => handleSetMode(mode)}
+              >
+                {savingMode === mode ? '바꾸는 중…' : label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {error && <p className="t-small" role="alert" style={{ color: 'var(--c-effort)' }}>{error}</p>}
+    </section>
+  )
+}
 
 function Dashboard() {
   const nav = useNavigate()
@@ -141,6 +326,8 @@ function Dashboard() {
             <Field label="마지막 확인">{status ? new Date(status.checkedAt).toLocaleTimeString('ko-KR') : <span className="t-muted">-</span>}</Field>
           </div>
         </section>
+
+        <PublicPartyPanel />
 
         <section className="card col" style={{ gap: 8 }}>
           <h2 className="t-h3" style={{ color: 'var(--c-title-soft)' }}>운동방</h2>

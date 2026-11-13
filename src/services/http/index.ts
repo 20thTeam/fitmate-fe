@@ -10,7 +10,7 @@
 // - 실시간: 친구 운동방은 서버 웹소켓(/ws)으로 다른 PC와 연결한다(http/realtime.ts).
 
 import type { ExerciseRecord, Profile, Routine, SunsetStatus, TeamProgress, WorkoutSession } from '../../types/domain'
-import type { AdminService, ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
+import type { AdminPublicParty, AdminService, ProfileService, PublicPartyService, RealtimeService, RecordService, RoutineService, Services, TeamService } from '../ports'
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from '../local/storage'
 import { localRealtime } from '../local/realtime'
@@ -39,6 +39,7 @@ import type {
   ParticipantCreateResponse,
   ParticipantResponse,
   PublicPartyResponse,
+  AdminPublicPartyResponse,
   RoomResponse,
   RoutineResponse,
   TeamXpResponse,
@@ -476,10 +477,17 @@ async function fetchPublicParty(): Promise<PublicPartyResponse | null> {
 
 function toSunsetStatus(p: PublicPartyResponse): SunsetStatus | null {
   const opensAt = Date.parse(p.opensAt)
-  const closesAt = Date.parse(p.closesAt)
-  if (Number.isNaN(opensAt) || Number.isNaN(closesAt)) return null
+  // 운영 화면에서 강제로 연 동안은 닫는 시각이 없다
+  const closesAt = p.closesAt === null ? null : Date.parse(p.closesAt)
+  if (Number.isNaN(opensAt) || (closesAt !== null && Number.isNaN(closesAt))) return null
   const isOpen = p.status === 'OPEN'
   return { isOpen, nextOpenAt: opensAt, closesAt: isOpen ? closesAt : null, participantCount: p.participantCount }
+}
+
+function toAdminPublicParty(p: AdminPublicPartyResponse): AdminPublicParty {
+  const status = toSunsetStatus(p)
+  if (!status) throw new ApiError('http', '공개 파티 시각 형식이 올바르지 않아요')
+  return { mode: p.mode, status }
 }
 
 const publicParty: PublicPartyService = {
@@ -511,6 +519,19 @@ const admin: AdminService = {
         return { roomId: String(room.roomId), name: room.name, capacity: room.capacity, teamName: room.teamName, team }
       }),
     )
+  },
+  needsAdminKey: true,
+  async getPublicParty(adminKey) {
+    try {
+      return toAdminPublicParty(await request<AdminPublicPartyResponse>('/api/admin/public-party', { adminKey }))
+    } catch (e) {
+      // 아직 이 운영 API가 배포되지 않은 서버
+      if (e instanceof ApiError && e.status === 404) return null
+      throw e
+    }
+  },
+  async setPublicPartyMode(mode, adminKey) {
+    return toAdminPublicParty(await request<AdminPublicPartyResponse>('/api/admin/public-party', { method: 'PUT', body: { mode }, adminKey }))
   },
   async clearDevice() {
     clearAll()

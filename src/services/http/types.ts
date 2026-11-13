@@ -183,10 +183,15 @@ export interface PublicPartyResponse {
   status: 'OPEN' | 'CLOSED'
   /** 열려 있으면 이번에 연 시각, 닫혀 있으면 다음에 여는 시각 (오프셋 포함, 예: 2026-11-11T22:00:00+09:00) */
   opensAt: string
-  /** opensAt 구간이 닫히는 시각 */
-  closesAt: string
+  /** opensAt 구간이 닫히는 시각. 운영 화면에서 강제로 연 동안은 null (BE 요청 #31) */
+  closesAt: string | null
   /** 지금 실시간 방에 있는 인원 (재접속 대기 포함) */
   participantCount: number
+}
+
+/** GET·PUT /api/admin/public-party 응답 (BE 요청 #31). 공개 파티 상태에 운영 모드를 더한다 */
+export interface AdminPublicPartyResponse extends PublicPartyResponse {
+  mode: 'AUTO' | 'OPEN' | 'CLOSED'
 }
 
 export interface TeamXpResponse {

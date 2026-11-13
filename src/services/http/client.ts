@@ -35,9 +35,11 @@ interface RsData<T> {
 }
 
 interface RequestOptions {
-  method?: 'GET' | 'POST'
+  method?: 'GET' | 'POST' | 'PUT'
   body?: unknown
   token?: string | null
+  /** 운영 API(/api/admin/*) 키 */
+  adminKey?: string
   timeoutMs?: number
 }
 
@@ -45,10 +47,11 @@ function isRsData(v: unknown): v is RsData<unknown> {
   return typeof v === 'object' && v !== null && 'resultCode' in v
 }
 
-export async function request<T>(path: string, { method = 'GET', body, token, timeoutMs = DEFAULT_TIMEOUT_MS }: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, { method = 'GET', body, token, adminKey, timeoutMs = DEFAULT_TIMEOUT_MS }: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {}
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   if (token) headers['X-Participant-Token'] = token
+  if (adminKey) headers['X-Admin-Key'] = adminKey
 
   let res: Response
   try {
