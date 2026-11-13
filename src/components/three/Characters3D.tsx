@@ -11,9 +11,12 @@ import type { Participant } from '../../types/domain'
 import { characterOf } from '../../config/characters'
 import { hasFreshLivePose, livePose } from '../../lib/pose/livePose'
 import ThreeBoundary from './ThreeBoundary'
-import { createPoseRig, relaxArms } from './rig'
+import { BONE, createPoseRig, relaxArms } from './rig'
 
 import { BODY_R, MODEL_H, figureX } from './layout'
+
+/** 원본 모델의 머리 크기 대비 비율. 줄일수록 같은 키 안에서 몸이 커진다 */
+const HEAD_SCALE = 0.78
 
 /** 운동 중 통통 튀는 높이 */
 const BOUNCE_H = BODY_R * 0.4
@@ -104,6 +107,8 @@ function useCharacterModel(url: string) {
       mesh.material = own
       cloned.push(own)
     })
+    // 머리를 줄인 뒤 키를 맞추면, 같은 키 안에서 몸통·팔다리가 그만큼 커진다
+    root.getObjectByName(BONE.head)?.scale.setScalar(HEAD_SCALE)
     // 키는 T자세에서 재고(팔을 내려도 키는 같다), 발바닥을 바닥(y=0)에 맞춘다
     root.updateMatrixWorld(true)
     const box = new Box3().setFromObject(root)

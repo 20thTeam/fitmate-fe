@@ -6,6 +6,7 @@ export const BONE = {
   hips: 'mixamorigHips',
   spine: 'mixamorigSpine',
   neck: 'mixamorigNeck',
+  head: 'mixamorigHead',
   leftArm: 'mixamorigLeftArm',
   leftForeArm: 'mixamorigLeftForeArm',
   leftHand: 'mixamorigLeftHand',
