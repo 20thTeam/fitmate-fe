@@ -5,7 +5,8 @@
 import type { ContestGame, ContestStandings } from '../../types/domain'
 import type { ContestService } from '../ports'
 import { localContest } from '../local/contest'
-import { ApiError, request } from './client'
+import { ApiError, request, WS_URL } from './client'
+import { createWsRealtime } from './realtime'
 
 interface ContestPlayerResponse {
   playerId: string
@@ -48,10 +49,25 @@ let storage: 'server' | 'device' | 'unknown' = 'unknown'
 
 const isMissingApi = (e: unknown) => e instanceof ApiError && e.kind === 'http' && e.status === 404
 
+/** 화면은 판마다 roomId를 `contest-<gameId>`로 넘긴다 */
+const CONTEST_ROOM_PREFIX = 'contest-'
+
+/**
+ * 판 참가자끼리 관절 좌표를 주고받는 서버 웹소켓. 참가자 토큰이 없어 판 참가 API가 준 playerId로 들어간다.
+ * 서버가 아직 챌린지 판 입장을 지원하지 않으면 입장이 실패하고, 화면은 '캐릭터 동작을 주고받지 못했어요'를 띄운다 (횟수 집계는 영향 없음)
+ */
+const contestWsRealtime = createWsRealtime({
+  async joinTarget(_token, { roomId, me }) {
+    return { contestGameId: roomId.slice(CONTEST_ROOM_PREFIX.length), playerId: me.userId }
+  },
+})
+
 export const httpContest: ContestService = {
   storage: () => storage,
-  // 서버 챌린지 판 실시간 경로는 BE에 아직 없다 (fitmate-be#34 후속 요청)
-  liveRealtime: () => (storage === 'device' ? localContest.liveRealtime() : null),
+  liveRealtime: () => {
+    if (storage === 'device') return localContest.liveRealtime()
+    return storage === 'server' && WS_URL ? contestWsRealtime : null
+  },
   async getStandings() {
     if (storage === 'device') return localContest.getStandings()
     try {

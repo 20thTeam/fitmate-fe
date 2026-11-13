@@ -2,6 +2,7 @@
 // 메시지 형식은 BE docs/실시간_메시지_형식.md, 관절 좌표 형식은 docs/동작정보_형식.md 를 따른다.
 // - 친구 운동방 입장: REST 입장(POST /api/rooms/{id}/enter) → 연결 → JOIN { roomId } → ROOM_SNAPSHOT
 // - 공개 파티(선셋) 입장: REST 입장 없이 연결 → JOIN { partyId } → ROOM_SNAPSHOT. 정원 없음, 열려 있을 때만 입장된다
+// - 학교 대항 챌린지 판: 토큰 없이 연결 → JOIN { contestGameId, playerId } → ROOM_SNAPSHOT. 정원 4명
 // - 끊기면 같은 토큰으로 다시 JOIN 한다. 서버가 30초 동안 자리를 남겨 두고 진행 상태도 유지한다.
 // - 카메라 영상은 보내지 않는다. 관절 좌표(POSE)만 보내고, 서버는 저장하지 않고 중계만 한다.
 
@@ -32,10 +33,10 @@ const FATAL_ERRORS = new Set(['PARTICIPANT_NOT_FOUND', 'ROOM_NOT_FOUND', 'ROOM_F
 type JoinOutcome = 'ok' | 'full' | 'fatal' | 'network'
 
 interface Deps {
-  /** 이 브라우저에 보관한 재방문 토큰 */
-  getToken(): string | null
+  /** 이 브라우저에 보관한 재방문 토큰. 없으면(챌린지 판) 토큰 없이 JOIN 한다 */
+  getToken?(): string | null
   /** JOIN 대상을 정한다. 친구 운동방은 REST 입장까지 마친 뒤 돌려준다 */
-  joinTarget(token: string): Promise<RtJoinTarget>
+  joinTarget(token: string | null, ctx: { roomId: string; me: Profile }): Promise<RtJoinTarget>
 }
 
 function parse(data: unknown): RtServerMessage | null {
@@ -188,11 +189,11 @@ export function createWsRealtime(deps: Deps): RealtimeService {
 
       /** 연결 하나를 열고 JOIN 결과를 기다린다. 성공하면 ws에 붙여 둔다 */
       const connect = async (): Promise<JoinOutcome> => {
-        const token = deps.getToken()
-        if (!token) return 'fatal'
+        const token = deps.getToken ? deps.getToken() : null
+        if (deps.getToken && !token) return 'fatal'
         let target: RtJoinTarget
         try {
-          target = await deps.joinTarget(token)
+          target = await deps.joinTarget(token, { roomId, me })
         } catch {
           return 'network'
         }
@@ -215,7 +216,7 @@ export function createWsRealtime(deps: Deps): RealtimeService {
             socket.close()
           }, JOIN_WAIT_MS)
 
-          socket.onopen = () => socket.send(JSON.stringify({ type: 'JOIN', payload: { token, ...target } } satisfies RtClientMessage))
+          socket.onopen = () => socket.send(JSON.stringify({ type: 'JOIN', payload: token ? { token, ...target } : target } satisfies RtClientMessage))
           socket.onmessage = (ev) => {
             const m = parse(ev.data)
             if (!m) return
