@@ -90,8 +90,8 @@ export const PROVISIONAL_AUTO_NEXT_SECONDS = 10
 /** 미정: 선셋 운영 (F-DXORMB). 권장안 = 매일 · 한국 시간. 종료 시각은 미정이라 임시 1시간. */
 export const PROVISIONAL_SUNSET = { openHourKst: 22, durationMin: 60 }
 
-/** 선셋 에어로빅 동작 */
-export const SUNSET_EXERCISE = { exerciseId: 'aerobic_jumping_jack', name: '점핑잭' }
+/** 선셋 에어로빅 동작. 영상 따라 여러 동작을 하니 화면에는 '선셋 에어로빅'으로 보여 주고, ID는 서버 계약대로 둔다 (#85) */
+export const SUNSET_EXERCISE = { exerciseId: 'aerobic_jumping_jack', name: '선셋 에어로빅' }
 
 /** 친구 파티 최대 인원 (PRD 확정: 2~5명) */
 export const PARTY_MAX = 5
