@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { services, type AdminPublicParty, type AdminRoom } from '../services'
-import type { PublicPartyMode, PublicPartySchedule } from '../types/domain'
+import type { ContestStandings, PublicPartyMode, PublicPartySchedule } from '../types/domain'
+import { CONTEST_SCHOOLS } from '../config/contest'
 import { SCHEDULE_DURATION_RANGE, durationLabel, isValidSchedule, sunsetOpenLabel } from '../lib/sunset'
 import { useApp } from '../store/app'
 import Backdrop from '../components/Backdrop'
@@ -320,6 +321,132 @@ function PublicPartyPanel() {
   )
 }
 
+const schoolName = (schoolId: string) => CONTEST_SCHOOLS.find((s) => s.schoolId === schoolId)?.name ?? schoolId
+
+const CONTEST_STORAGE_LABEL = {
+  server: '서버 (노트북끼리 같은 판)',
+  device: '이 브라우저에만',
+  unknown: '확인 중',
+} as const
+
+/** 학교 대항 챌린지(/univ-contest) 현황과 기록 초기화. 기획 밖 시연 화면이라 기능 ID가 없다 */
+function ContestPanel() {
+  const nav = useNavigate()
+  const [standings, setStandings] = useState<ContestStandings | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isResetting, setIsResetting] = useState(false)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [retryKey, setRetryKey] = useState(0)
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    const isStale = () => ctrl.signal.aborted
+    services.contest
+      .getStandings()
+      .then((s) => !isStale() && setStandings(s))
+      .catch(() => !isStale() && setError('챌린지 현황을 불러오지 못했어요. 서버가 켜져 있는지 확인해 주세요.'))
+      .finally(() => !isStale() && setIsLoading(false))
+    return () => ctrl.abort()
+  }, [retryKey])
+
+  const handleRefresh = () => {
+    setIsLoading(true)
+    setError('')
+    setNotice('')
+    setRetryKey((k) => k + 1)
+  }
+
+  const handleReset = async () => {
+    // 운영 키는 위 공개 운동방 칸에서 입력한 값을 같이 쓴다
+    const adminKey = services.admin.needsAdminKey ? readAdminKey() : ''
+    if (services.admin.needsAdminKey && !adminKey) {
+      setError('위 공개 운동방 칸에서 서버 운영 키를 먼저 입력해 주세요.')
+      return
+    }
+    if (!window.confirm('학교 대항 챌린지 기록을 모두 지울까요? 학교 합계·상위 기록·진행 중인 판이 모두 사라지고 되돌릴 수 없어요.')) return
+    setIsResetting(true)
+    setError('')
+    setNotice('')
+    try {
+      const result = await services.admin.resetContest(adminKey)
+      if (result === 'missing') {
+        setError('서버에 챌린지 기록 초기화 API(POST /api/admin/univ-contest/reset)가 아직 없어요. BE 배포를 기다려 주세요.')
+        return
+      }
+      setNotice('기록을 모두 지웠어요.')
+      setIsLoading(true)
+      setRetryKey((k) => k + 1)
+    } catch (e) {
+      setError(errorStatus(e) === 401 ? '운영 키가 맞지 않아요. 위 공개 운동방 칸에서 다시 입력해 주세요.' : adminErrorMessage(e))
+    } finally {
+      setIsResetting(false)
+    }
+  }
+
+  const storage = services.contest.storage()
+  const leader = standings?.schools[0]
+
+  return (
+    <section className="card col" style={{ gap: 14 }}>
+      <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2 className="t-h3" style={{ color: 'var(--c-title-soft)' }}>학교 대항 챌린지</h2>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn btn-secondary btn-sm" onClick={() => nav('/univ-contest')}>챌린지 화면 열기</button>
+          <button className="btn btn-secondary btn-sm" disabled={isLoading} onClick={handleRefresh}>{isLoading ? '확인 중…' : '새로고침'}</button>
+        </div>
+      </div>
+      <p className="t-small t-soft">시연장 노트북에서 하는 20초 스쿼트 챌린지예요. 리허설이 끝나면 기록을 지우고 시작해 주세요.</p>
+
+      {isLoading && !standings ? (
+        <p className="t-soft" style={{ padding: '18px 0', textAlign: 'center' }}>챌린지 현황을 불러오는 중…</p>
+      ) : standings && (
+        <>
+          <div className="row wrap" style={{ gap: 32 }} role="status">
+            <Field label="저장 위치">{CONTEST_STORAGE_LABEL[storage]}</Field>
+            <Field label="끝난 판">{`${standings.gameCount}판`}</Field>
+            <Field label="1위 학교">{leader ? `${schoolName(leader.schoolId)} · ${leader.totalReps.toLocaleString()}회` : <span className="t-muted">아직 기록 없음</span>}</Field>
+          </div>
+          {standings.schools.length > 0 && (
+            <div className="col" style={{ gap: 4 }}>
+              <span className="t-small t-soft">학교별 누적</span>
+              {standings.schools.map((s, i) => (
+                <div key={s.schoolId} className="row" style={{ gap: 12 }}>
+                  <span style={{ width: 24 }}>{i + 1}</span>
+                  <span style={{ flex: 1 }}>{schoolName(s.schoolId)}</span>
+                  <span className="t-soft">{`${s.entryCount}명 참가`}</span>
+                  <span style={{ width: 80, textAlign: 'right', fontWeight: 600 }}>{`${s.totalReps.toLocaleString()}회`}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {standings.topPlayers.length > 0 && (
+            <div className="col" style={{ gap: 4 }}>
+              <span className="t-small t-soft">한 판 최고 기록</span>
+              {standings.topPlayers.map((p, i) => (
+                <div key={`${p.nickname}-${p.schoolId}-${i}`} className="row" style={{ gap: 12 }}>
+                  <span style={{ width: 24 }}>{i + 1}</span>
+                  <span style={{ flex: 1 }}>{`${p.nickname} · ${schoolName(p.schoolId)}`}</span>
+                  <span style={{ width: 80, textAlign: 'right', fontWeight: 600 }}>{`${p.reps}회`}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      <div className="row wrap" style={{ gap: 12, alignItems: 'center' }}>
+        <button className="btn btn-secondary" disabled={isResetting} onClick={handleReset} style={{ color: 'var(--c-effort)' }}>
+          {isResetting ? '지우는 중…' : '챌린지 기록 모두 지우기'}
+        </button>
+        <span className="t-small t-soft">{storage === 'device' ? '이 브라우저에 저장된 판만 지워요.' : '서버의 판·참가자·결과를 모두 지워요.'}</span>
+      </div>
+      {notice && <p className="t-small" role="status" style={{ color: 'var(--c-good)' }}>{notice}</p>}
+      {error && <p className="t-small" role="alert" style={{ color: 'var(--c-effort)' }}>{error}</p>}
+    </section>
+  )
+}
+
 function Dashboard() {
   const nav = useNavigate()
   const profile = useApp((s) => s.profile)
@@ -405,6 +532,8 @@ function Dashboard() {
         </section>
 
         <PublicPartyPanel />
+
+        <ContestPanel />
 
         <section className="card col" style={{ gap: 8 }}>
           <h2 className="t-h3" style={{ color: 'var(--c-title-soft)' }}>운동방</h2>

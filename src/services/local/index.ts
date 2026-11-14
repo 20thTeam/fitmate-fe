@@ -7,7 +7,7 @@ import type { AdminService, ProfileService, PublicPartyService, RecordService, R
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from './storage'
 import { localRealtime } from './realtime'
-import { localContest } from './contest'
+import { clearLocalContest, localContest } from './contest'
 import { localRooms } from './rooms'
 import { devSunsetOverride, readLocalSunsetMode, readLocalSunsetSchedule, sunsetStatusWithMode, writeLocalSunsetMode, writeLocalSunsetSchedule } from '../../lib/sunset'
 
@@ -119,6 +119,10 @@ const admin: AdminService = {
   async setPublicPartySchedule(schedule) {
     writeLocalSunsetSchedule(schedule)
     return localAdminPublicParty()
+  },
+  async resetContest() {
+    clearLocalContest()
+    return 'done'
   },
 }
 
