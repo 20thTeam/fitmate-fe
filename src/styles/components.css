@@ -616,24 +616,29 @@ button.check-item:hover { color: #fff; }
   position: absolute; left: 50%; top: 116px; transform: translateX(-50%); z-index: 5;
   width: min(820px, 64vw); display: flex; justify-content: center; pointer-events: none;
 }
+/* 진한 보라 바탕 + 노란 테두리·아이콘. 밝은 분홍 무대 위에서도 2m 거리에서 또렷하게 보이게 한다.
+   칭찬(초록)·오류(분홍)만 테두리·아이콘 색을 바꿔 구분한다 */
 .coach-bubble {
+  --bubble-accent: #f2d47a;
   pointer-events: auto; position: relative;
-  display: flex; align-items: center; gap: 14px;
-  padding: 14px 26px 14px 16px; border-radius: 22px;
-  font-size: 30px; font-weight: 800; line-height: 1.25; color: #fff;
-  background: rgba(36, 38, 50, 0.88); border: 2px solid rgba(255, 255, 255, 0.25);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  display: flex; align-items: center; gap: 18px;
+  padding: 14px 30px 14px 18px; border-radius: 28px;
+  font-size: 30px; font-weight: 700; line-height: 1.25; color: #fff;
+  background: #3b3166; border: 3px solid var(--bubble-accent);
+  box-shadow: 0 10px 30px rgba(42, 30, 52, 0.35);
 }
 .coach-bubble::after {
-  content: ''; position: absolute; left: 50%; bottom: -10px; width: 18px; height: 18px;
-  background: inherit; transform: translateX(-50%) rotate(45deg); border-right: inherit; border-bottom: inherit;
+  content: ''; position: absolute; left: 50%; bottom: -11px; width: 18px; height: 18px;
+  background: inherit; transform: translateX(-50%) rotate(45deg);
+  border-right: 3px solid var(--bubble-accent); border-bottom: 3px solid var(--bubble-accent);
 }
-.coach-bubble-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; flex: none; font-size: 26px; background: rgba(255, 255, 255, 0.2); }
-.coach-bubble.is-fix { background: rgba(196, 104, 30, 0.94); border-color: #ffc27a; }
-.coach-bubble.is-good { background: rgba(66, 135, 58, 0.94); border-color: #a9ea9b; }
-.coach-bubble.is-warn { background: rgba(160, 82, 38, 0.94); border-color: #ffc27a; }
-.coach-bubble.is-error { background: rgba(150, 40, 60, 0.94); border-color: #ff9fb0; font-size: 24px; }
-.coach-bubble.is-info { font-size: 24px; }
+.coach-bubble-icon {
+  display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; flex: none;
+  font-size: 30px; font-weight: 800; color: #3b3166; background: var(--bubble-accent);
+}
+.coach-bubble.is-good { --bubble-accent: #9be58a; }
+.coach-bubble.is-error { --bubble-accent: #ff9fb0; font-size: 24px; }
+.coach-bubble.is-info { --bubble-accent: #c9bfe8; font-size: 24px; }
 .coach-bubble.is-idle { font-size: 18px; font-weight: 700; padding: 8px 18px; color: var(--c-text-soft); background: rgba(36, 38, 50, 0.6); box-shadow: none; }
 .coach-bubble.is-idle::after { display: none; }
 .coach-bubble.is-pop { animation: coach-pop 0.28s ease-out; }
