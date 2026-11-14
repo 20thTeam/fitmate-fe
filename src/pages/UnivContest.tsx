@@ -14,19 +14,15 @@ import { usePose } from '../hooks/usePose'
 import { useNow } from '../hooks/useNow'
 import { useRoom } from '../hooks/useRoom'
 import { CHARACTERS } from '../config/characters'
-import type { ContestGame, ContestStandings, ContestTrend, Participant, ParticipantStatus, Profile } from '../types/domain'
+import type { ContestGame, ContestStandings, Participant, ParticipantStatus, Profile } from '../types/domain'
 import Backdrop from '../components/Backdrop'
 import PoseStatus from '../components/room/PoseStatus'
 import Scene from '../components/room/Scene'
 import ParticipantPanel from '../components/room/ParticipantPanel'
 import { CameraPreview, Logo } from '../components/ui'
-import { BarsPanel, ContestStage, PageArrow, ResultNotice, StandingsPanels, TrendPanel, TrophyTitle } from '../components/contest/ContestRanking'
-import { useArrowKeys } from '../hooks/useArrowKeys'
+import { ContestStage, ResultNotice, StandingsPanels, TrophyTitle } from '../components/contest/ContestRanking'
 
 type Phase = 'board' | 'join' | 'game'
-/** 현황·결과 화면에서 화살표로 넘기는 페이지. summary = 첫 화면(현황) 또는 판 결과 */
-type RankPage = 'summary' | 'trend' | 'bars'
-const RANK_PAGES: RankPage[] = ['summary', 'trend', 'bars']
 
 type Load<T> = { state: 'loading' } | { state: 'error'; message: string } | { state: 'ok'; data: T }
 
@@ -63,8 +59,6 @@ export default function UnivContest() {
   const profile = useApp((s) => s.profile)
   const [phase, setPhase] = useState<Phase>('board')
   const [standings, setStandings] = useState<Load<ContestStandings>>({ state: 'loading' })
-  const [trend, setTrend] = useState<ContestTrend | null>(null)
-  const [page, setPage] = useState<RankPage>('summary')
   const [nickname, setNickname] = useState(profile?.nickname ?? '')
   const [schoolId, setSchoolId] = useState('')
   const [game, setGame] = useState<ContestGame | null>(null)
@@ -98,27 +92,14 @@ export default function UnivContest() {
     )
   }, [])
 
-  // 추이는 실패해도 그래프만 비워 두고 현황 화면은 그대로 쓴다
-  const loadTrend = useCallback(() => {
-    services.contest.getTrend().then(setTrend, () => {})
-  }, [])
-
   const isStandingsShown = view === 'board' || view === 'result'
   useEffect(() => {
     if (!isStandingsShown) return
-    const load = () => {
-      loadStandings()
-      loadTrend()
-    }
-    load()
-    const t = setInterval(load, BOARD_REFRESH_MS)
+    loadStandings()
+    const t = setInterval(loadStandings, BOARD_REFRESH_MS)
     return () => clearInterval(t)
-  }, [isStandingsShown, loadStandings, loadTrend])
+  }, [isStandingsShown, loadStandings])
 
-  const pageIndex = RANK_PAGES.indexOf(page)
-  const prevPage = isStandingsShown && pageIndex > 0 ? () => setPage(RANK_PAGES[pageIndex - 1]) : null
-  const nextPage = isStandingsShown && pageIndex < RANK_PAGES.length - 1 ? () => setPage(RANK_PAGES[pageIndex + 1]) : null
-  useArrowKeys(prevPage, nextPage)
 
   // ── 카메라 · 자세 인식 ──
   const camera = useCamera()
@@ -261,15 +242,35 @@ export default function UnivContest() {
   const backToBoard = () => {
     setGame(null)
     setActionError('')
-    setPage('summary')
     setPhase('board')
+  }
+
+  /** [개발용] 카메라로 한 판 하지 않고 판 결과 화면을 띄운다. 서버·저장소에는 아무것도 보내지 않는다 */
+  const previewResult = () => {
+    const now = Date.now()
+    const me = { playerId: 'dev-me', nickname: nickname.trim() || '나', schoolId: schoolId || CONTEST_SCHOOLS[0].schoolId, reps: 12, hasSubmitted: true }
+    receiveGame({
+      gameId: 'dev-preview',
+      status: 'FINISHED',
+      startAt: now - 40_000,
+      durationMs: CONTEST_RULES.durationMs,
+      maxPlayers: CONTEST_RULES.maxPlayers,
+      serverNow: now,
+      players: [
+        { playerId: 'dev-a', nickname: '친구1', schoolId: 'seoultech', reps: 15, hasSubmitted: true },
+        me,
+        { playerId: 'dev-b', nickname: '친구2', schoolId: 'kw', reps: null, hasSubmitted: true },
+      ],
+    })
+    setPlayerId(me.playerId)
+    setHasSubmitted(true)
+    setPhase('game')
   }
 
   /** 현황·결과·자세히 보기에서 다음 판 참가 화면으로 */
   const goJoin = () => {
     setGame(null)
     setActionError('')
-    setPage('summary')
     setPhase('join')
   }
 
@@ -344,14 +345,13 @@ export default function UnivContest() {
   }
 
   if (view === 'board' || (view === 'result' && game)) {
-    const standingsData = standings.state === 'ok' ? standings.data : null
     const summary = view === 'result' && game ? (
       <>
         <TrophyTitle>학교별 누적 스쿼트 순위</TrophyTitle>
         <ResultNotice {...resultNoticeOf(game, playerId)} />
         <StandingsArea standings={standings} onRetry={loadStandings} />
+        {/* 추이·막대(시안의 '순위 자세히 보기')는 운영 화면에서 여는 순위 전광판(/univ-contest/board)에서만 본다 */}
         <div className="contest-actions" style={{ marginTop: 62 }}>
-          <button type="button" className="contest-btn is-dark" onClick={() => setPage('trend')}>순위 자세히 보기</button>
           <button type="button" className="contest-btn" onClick={goJoin}>다음 회차 참가</button>
         </div>
       </>
@@ -360,6 +360,7 @@ export default function UnivContest() {
         <h1 className="contest-hero">학교 대항 스쿼트 20초 챌린지</h1>
         <div className="contest-hero-chip">{`한 판 최대 ${CONTEST_RULES.maxPlayers}명  20초 동안 많이 한 사람이 1등`}</div>
         <StandingsArea standings={standings} onRetry={loadStandings} />
+        {/* 추이·막대 전광판은 운영 화면(/admin, 암호) 안의 버튼으로만 연다. 참가 화면에는 입구를 두지 않는다 (팀 결정) */}
         <div style={{ marginTop: 52 }}>
           <button type="button" className="contest-btn is-lg" onClick={goJoin}>챌린지 참가하기 →</button>
         </div>
@@ -368,33 +369,15 @@ export default function UnivContest() {
     return (
       <Backdrop theme="public">
         <ContestStage>
-          {page === 'summary' && summary}
-          {page === 'trend' && (
-            <>
-              <TrophyTitle>학교별 누적 스쿼트 순위</TrophyTitle>
-              <TrendPanel trend={trend} standings={standingsData} />
-              <div style={{ marginTop: 23 }}>
-                <button type="button" className="contest-btn" onClick={goJoin}>다음 회차 참가</button>
-              </div>
-            </>
-          )}
-          {page === 'bars' && (
-            <>
-              <TrophyTitle>학교별 누적 스쿼트 순위</TrophyTitle>
-              <BarsPanel standings={standingsData} />
-              <div style={{ marginTop: 26 }}>
-                <button type="button" className="contest-btn" onClick={goJoin}>다음 회차 참가</button>
-              </div>
-            </>
-          )}
+          {summary}
           {storage === 'device' && (
             <span className="chip chip-provisional contest-device-note" style={{ position: 'absolute', top: 40 }}>서버 연결 안 됨 · 이 컴퓨터에만 저장돼서 다른 컴퓨터와 같은 판에 못 들어가요</span>
           )}
-          {prevPage && <PageArrow dir="prev" onClick={prevPage} label="이전 화면" />}
-          {nextPage && <PageArrow dir="next" onClick={nextPage} label="다음 화면" />}
-          <div className="contest-pager" aria-hidden>
-            {RANK_PAGES.map((p) => <span key={p} className={p === page ? 'is-on' : ''} />)}
-          </div>
+          {import.meta.env.DEV && view === 'board' && (
+            <button type="button" className="btn btn-dark btn-sm" style={{ position: 'absolute', right: 28, bottom: 28 }} onClick={previewResult}>
+              [개발용] 결과 화면 보기
+            </button>
+          )}
         </ContestStage>
         <Logo isLight />
       </Backdrop>

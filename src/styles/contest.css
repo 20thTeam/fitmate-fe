@@ -183,6 +183,47 @@
   font-weight: 700;
 }
 
+/* ───────── 전광판 첫 페이지: 시상대 ───────── */
+.contest-podium {
+  margin-top: 31px;
+  width: 1150px;
+  height: 380px;
+  padding: 0 40px 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+.contest-podium-stage { display: grid; grid-template-columns: repeat(3, 352px); align-items: end; }
+.contest-podium-col { display: flex; flex-direction: column; align-items: center; }
+.contest-podium-col img { margin-bottom: 2px; }
+.contest-podium-name, .contest-podium-reps { font-size: 28px; font-weight: 700; line-height: 1.25; white-space: nowrap; }
+.contest-podium-reps { margin-bottom: 12px; }
+.contest-podium-block {
+  width: 100%;
+  display: grid;
+  place-items: center;
+  border-radius: 20px 20px 0 0;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  transition: height 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.contest-podium-medal { font-size: 64px; line-height: 1; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.2)); }
+.contest-podium-base { width: 1090px; height: 8px; border-radius: 4px; background: rgba(162, 167, 181, 0.9); }
+.contest-podium-rest {
+  margin: 11px 0 0;
+  width: 1150px;
+  height: 170px;
+  padding: 20px 60px 0;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+}
+.contest-podium-rest li { width: 140px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.contest-podium-rest strong { font-size: 24px; font-weight: 700; line-height: 1.209; white-space: nowrap; }
+.contest-podium-rest-reps { font-size: 22px; font-weight: 860; }
+.contest-podium-rest-reps.is-empty { font-size: 16px; font-weight: 700; color: #b5b5b5; }
+.contest-rank-podium { width: 50px; height: 50px; margin-bottom: 6px; }
+
 /* ───────── 자세히 보기 ① 추이 그래프 ───────── */
 .contest-trend { margin-top: 31px; width: 1251px; height: 643px; padding-top: 22px; display: flex; flex-direction: column; }
 .contest-trend-head { display: flex; align-items: flex-start; gap: 16px; padding: 0 36px 0 19px; }
@@ -249,10 +290,12 @@
 
 /* ───────── 자세히 보기 ② 막대 + 참가자 상세 ───────── */
 .contest-bars { margin-top: 31px; width: 1270px; height: 368px; padding: 0 39px; }
-.contest-bar-cols { list-style: none; margin: 0; padding: 0; height: 100%; display: grid; grid-template-columns: repeat(8, 1fr); gap: 31px; }
+.contest-bar-cols { list-style: none; margin: 0; padding: 0; height: 100%; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 18px; }
+/* 긴 학교 이름(서울과학기술대)이 칸을 넓히지 않게 막대 폭은 고정하고 이름만 옆 칸 여백으로 넘치게 둔다 */
+.contest-bar-col { min-width: 0; overflow: visible; }
 .contest-bar-col { display: flex; flex-direction: column; align-items: center; }
 .contest-bar-area {
-  height: 299px;
+  height: 290px;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -265,8 +308,7 @@
 .contest-bar-value { font-size: 20px; font-weight: 860; }
 .contest-bar-col.is-empty .contest-bar-value { color: #b5b5b5; }
 .contest-bar-block { width: 100%; border-radius: 10px 10px 0 0; transition: height 0.8s cubic-bezier(0.2, 0.8, 0.2, 1); }
-.contest-bar-name { margin-top: 8px; font-size: 14px; font-weight: 700; white-space: nowrap; }
-.contest-bar-sub { font-size: 12px; font-weight: 700; color: #dadada; }
+.contest-bar-name { margin-top: 10px; font-size: 21px; font-weight: 700; letter-spacing: -0.03em; white-space: nowrap; }
 
 .contest-detail { margin-top: 10px; width: 1270px; height: 228px; padding: 18px 22px 14px; display: flex; flex-direction: column; gap: 6px; }
 .contest-detail-head { display: flex; flex-direction: column; gap: 8px; }
@@ -278,13 +320,13 @@
 .contest-table th:first-child, .contest-table td:first-child { width: 80px; text-align: center; }
 .contest-table th:last-child, .contest-table td:last-child { text-align: right; }
 
-/* 페이지 넘기기 화살표 */
+/* 페이지 넘기기 화살표. 가장 넓은 패널(1270px)이 양옆에 85px만 남겨서 그 안(12~72px)에 둔다 */
 .contest-arrow {
   position: absolute;
   top: 512px;
-  width: 72px;
-  height: 72px;
-  margin-top: -36px;
+  width: 60px;
+  height: 60px;
+  margin-top: -30px;
   display: grid;
   place-items: center;
   border: 0;
@@ -293,8 +335,8 @@
   color: #fff;
   cursor: pointer;
 }
-.contest-arrow.is-prev { left: 28px; }
-.contest-arrow.is-next { right: 28px; }
+.contest-arrow.is-prev { left: 12px; }
+.contest-arrow.is-next { right: 12px; }
 .contest-pager { position: absolute; bottom: 24px; display: flex; gap: 8px; }
 .contest-pager span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255, 255, 255, 0.4); }
 .contest-pager span.is-on { background: #fff; }

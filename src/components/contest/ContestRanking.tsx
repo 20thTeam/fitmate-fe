@@ -30,9 +30,9 @@ export function ContestStage({ children }: { children: ReactNode }) {
 }
 
 /** 트로피 두 개 사이의 큰 제목 (시안: 48px Heavy, 트로피 44px) */
-export function TrophyTitle({ children }: { children: ReactNode }) {
+export function TrophyTitle({ children, top }: { children: ReactNode; top?: number }) {
   return (
-    <h1 className="contest-title">
+    <h1 className="contest-title" style={top === undefined ? undefined : { marginTop: top }}>
       <img src={trophyIcon} alt="" width={44} height={44} />
       <span>{children}</span>
       <img src={trophyIcon} alt="" width={44} height={44} />
@@ -132,6 +132,54 @@ export function ResultNotice({ icon, title, sub, badge }: { icon: string; title:
       </div>
       <span className="contest-notice-badge">{badge}</span>
     </section>
+  )
+}
+
+// ───────── 전광판 첫 페이지: 시상대 (시안 254:987 + 팀 메달 단상 캡처) ─────────
+
+/** 단상 색(금·은·동)·높이·메달 (2등·1등·3등 순서로 놓는다) */
+const PODIUM = [
+  { rank: 2, color: 'linear-gradient(180deg, #e3e8ef, #b9c2cf)', height: 150, medal: '🥈' },
+  { rank: 1, color: 'linear-gradient(180deg, #ffe38a, #e9bd45)', height: 200, medal: '🥇' },
+  { rank: 3, color: 'linear-gradient(180deg, #ecb98c, #c98a57)', height: 125, medal: '🥉' },
+]
+
+export function PodiumPanel({ standings }: { standings: ContestStandings | null }) {
+  const schools = orderedSchools(standings)
+  const repsOf = new Map(standings?.schools.map((s) => [s.schoolId, s.totalReps]) ?? [])
+  return (
+    <>
+      <section className="contest-panel contest-podium" aria-label="1~3위 학교">
+        <div className="contest-podium-stage">
+          {PODIUM.map((p) => {
+            const id = schools[p.rank - 1]
+            const reps = id ? repsOf.get(id) : undefined
+            return (
+              <div key={p.rank} className="contest-podium-col">
+                {p.rank === 1 && reps !== undefined && <img src={crownIcon} alt="" width={44} height={44} />}
+                <strong className="contest-podium-name">{reps !== undefined ? schoolShortName(id) : '아직 기록 없음'}</strong>
+                {reps !== undefined && <span className="contest-podium-reps">{reps}회</span>}
+                <div className="contest-podium-block" style={{ height: p.height, background: p.color }}>
+                  <span className="contest-podium-medal" role="img" aria-label={`${p.rank}위`}>{p.medal}</span>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div className="contest-podium-base" aria-hidden />
+      </section>
+      <ol className="contest-panel contest-podium-rest" start={4} aria-label="4~8위 학교">
+        {schools.slice(3, CONTEST_SCHOOLS.length).map((id, i) => (
+          <li key={id}>
+            <span className="contest-rank contest-rank-lg is-sky contest-rank-podium">{i + 4}</span>
+            <strong>{schoolShortName(id)}</strong>
+            <span className={repsOf.has(id) ? 'contest-podium-rest-reps' : 'contest-podium-rest-reps is-empty'}>
+              {repsOf.has(id) ? `${repsOf.get(id)}회` : '기록 없음'}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </>
   )
 }
 
@@ -247,7 +295,8 @@ export function TrendPanel({ trend, standings }: { trend: ContestTrend | null; s
               <text x={PLOT.left - 46} y={yOf(t.v)} className="contest-axis" textAnchor="end" dominantBaseline="central">{t.label}</text>
             </g>
           ))}
-          {shown.map((b, i) => (i % labelEvery === 0 || i === n - 1) && (
+          {/* 라벨을 건너뛸 때는 마지막(지금) 시간이 꼭 보이게 뒤에서부터 센다 */}
+          {shown.map((b, i) => (n - 1 - i) % labelEvery === 0 && (
             <text key={b.startAt} x={xOf(i)} y={PLOT.bottom + 44} className="contest-axis" textAnchor="middle">{b.hour}시</text>
           ))}
           <g key={dataKey}>
@@ -320,7 +369,6 @@ export function BarsPanel({ standings }: { standings: ContestStandings | null })
                   <div className="contest-bar-block" style={{ height: s ? Math.max(9, (reps / max) * 214) : 9, background: schoolColor(id) }} />
                 </div>
                 <span className="contest-bar-name">{i + 1}. {schoolShortName(id)}</span>
-                <span className="contest-bar-sub">{s ? `${s.entryCount}명 참여` : '기록 없음'}</span>
               </li>
             )
           })}
@@ -363,7 +411,7 @@ export function BarsPanel({ standings }: { standings: ContestStandings | null })
 export function PageArrow({ dir, onClick, label }: { dir: 'prev' | 'next'; onClick: () => void; label: string }) {
   return (
     <button type="button" className={`contest-arrow is-${dir}`} onClick={onClick} aria-label={label}>
-      <svg viewBox="0 0 24 24" width="36" height="36" aria-hidden>
+      <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden>
         <path d={dir === 'prev' ? 'M15 4 7 12l8 8' : 'm9 4 8 8-8 8'} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     </button>

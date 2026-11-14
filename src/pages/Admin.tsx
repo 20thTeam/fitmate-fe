@@ -6,22 +6,12 @@ import { CONTEST_SCHOOLS } from '../config/contest'
 import { SCHEDULE_DURATION_RANGE, durationLabel, isValidSchedule, sunsetOpenLabel } from '../lib/sunset'
 import { useApp } from '../store/app'
 import Backdrop from '../components/Backdrop'
-import { CenterMessage, Logo } from '../components/ui'
+import AdminGate from '../components/AdminGate'
+import { Logo } from '../components/ui'
 
 // 운영 화면. manyfast 기획에 없는 화면이라 기능 ID가 없다.
 // 서버에 운영용 API가 없어서 지금 있는 공개 API(운동방·팀 경험치)와 이 브라우저 정보만 보여준다.
 // 전체 참가자·전체 기록·접속자는 값을 지어내지 않고 '준비 중'으로 둔다.
-
-const PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD ?? ''
-const UNLOCK_KEY = 'fitmate-admin-unlocked'
-
-function readUnlocked() {
-  try {
-    return sessionStorage.getItem(UNLOCK_KEY) === '1'
-  } catch {
-    return false
-  }
-}
 
 interface Status {
   rooms: AdminRoom[]
@@ -393,10 +383,11 @@ function ContestPanel() {
         <h2 className="t-h3" style={{ color: 'var(--c-title-soft)' }}>학교 대항 챌린지</h2>
         <div className="row" style={{ gap: 8 }}>
           <button className="btn btn-secondary btn-sm" onClick={() => nav('/univ-contest')}>챌린지 화면 열기</button>
+          <button className="btn btn-secondary btn-sm" onClick={() => nav('/univ-contest/board')}>순위 전광판 열기 (아이패드)</button>
           <button className="btn btn-secondary btn-sm" disabled={isLoading} onClick={handleRefresh}>{isLoading ? '확인 중…' : '새로고침'}</button>
         </div>
       </div>
-      <p className="t-small t-soft">시연장 노트북에서 하는 20초 스쿼트 챌린지예요. 리허설이 끝나면 기록을 지우고 시작해 주세요.</p>
+      <p className="t-small t-soft">시연장 노트북에서 하는 20초 스쿼트 챌린지예요. 리허설이 끝나면 기록을 지우고 시작해 주세요. 학교별 추이 그래프는 '순위 전광판 열기'로 띄워요 (시연장 아이패드용).</p>
 
       {isLoading && !standings ? (
         <p className="t-soft" style={{ padding: '18px 0', textAlign: 'center' }}>챌린지 현황을 불러오는 중…</p>
@@ -607,65 +598,9 @@ function Dashboard() {
 }
 
 export default function Admin() {
-  const nav = useNavigate()
-  // 개발 모드에서 암호를 안 정했으면 바로 연다. 배포에서는 암호가 없으면 닫아 둔다
-  const [isUnlocked, setIsUnlocked] = useState(() => (PASSWORD === '' ? import.meta.env.DEV : readUnlocked()))
-  const [input, setInput] = useState('')
-  const [isWrong, setIsWrong] = useState(false)
-
-  if (isUnlocked) return <Dashboard />
-
-  if (PASSWORD === '') {
-    return (
-      <CenterMessage
-        title="운영 화면이 닫혀 있어요"
-        desc="배포 환경변수 VITE_ADMIN_PASSWORD에 암호를 정하면 열 수 있어요."
-        action={<button className="btn btn-primary" onClick={() => nav('/')}>처음 화면으로</button>}
-      />
-    )
-  }
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault()
-    if (input !== PASSWORD) {
-      setIsWrong(true)
-      return
-    }
-    try {
-      // 탭을 닫으면 다시 묻도록 세션에만 둔다
-      sessionStorage.setItem(UNLOCK_KEY, '1')
-    } catch {
-      /* 저장이 막혀 있으면 이번 화면에서만 연다 */
-    }
-    setIsUnlocked(true)
-  }
-
   return (
-    <Backdrop isDim>
-      <Logo isLight />
-      <div className="backdrop-body is-center">
-        <form className="loading-card" style={{ minHeight: 320 }} onSubmit={handleSubmit}>
-          <h1 className="t-h2">운영 화면</h1>
-          <p className="t-soft">운영 암호를 입력해 주세요.</p>
-          <input
-            className="input"
-            type="password"
-            autoFocus
-            autoComplete="off"
-            aria-label="운영 암호"
-            aria-invalid={isWrong}
-            placeholder="암호"
-            value={input}
-            onChange={(e) => { setInput(e.target.value); setIsWrong(false) }}
-            style={{ width: 280, textAlign: 'center' }}
-          />
-          <p className="t-small" role="alert" style={{ minHeight: 18, color: 'var(--c-effort)' }}>{isWrong ? '암호가 맞지 않아요.' : ''}</p>
-          <div className="row center" style={{ gap: 12 }}>
-            <button type="button" className="btn btn-secondary" onClick={() => nav('/')}>처음 화면으로</button>
-            <button type="submit" className="btn btn-primary" disabled={input === ''}>열기</button>
-          </div>
-        </form>
-      </div>
-    </Backdrop>
+    <AdminGate scope="session" title="운영 화면">
+      <Dashboard />
+    </AdminGate>
   )
 }
