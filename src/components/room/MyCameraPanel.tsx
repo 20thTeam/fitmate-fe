@@ -7,11 +7,9 @@ interface Props {
   isCameraOn: boolean
   /** 영상 위에 겹칠 것 (뼈대 캔버스) */
   overlay?: ReactNode
-  /** 패널 아래에 붙일 것 (음성 켜기 등) */
-  footer?: ReactNode
 }
 
-export default function MyCameraPanel({ stream, isCameraOn, overlay, footer }: Props) {
+export default function MyCameraPanel({ stream, isCameraOn, overlay }: Props) {
   return (
     <section className="my-camera glass is-lined col" aria-label="내 카메라">
       <div className="camera-box my-camera-box">
@@ -23,7 +21,6 @@ export default function MyCameraPanel({ stream, isCameraOn, overlay, footer }: P
         {stream && overlay}
       </div>
       <span className="t-xs t-soft">영상은 내 브라우저 안에서만 쓰여요</span>
-      {footer}
     </section>
   )
 }

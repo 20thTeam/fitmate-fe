@@ -20,11 +20,9 @@ interface Props {
   setupHint: string
   isRunning: boolean
   onRetry: () => void
-  /** 새 안내를 읽어 줄 때 (음성 켜짐일 때만 실제로 읽는다) */
-  onSpeak?: (text: string) => void
 }
 
-export default function CoachBubble({ notes, onRetry, onSpeak, ...pose }: Props) {
+export default function CoachBubble({ notes, onRetry, ...pose }: Props) {
   const latest = notes.length > 0 ? notes[notes.length - 1] : null
   // 처음 그릴 때 이미 있던 피드백은 다시 띄우지 않는다
   const seen = useRef(latest)
@@ -38,16 +36,11 @@ export default function CoachBubble({ notes, onRetry, onSpeak, ...pose }: Props)
     seen.current = latest
     // 판정 이벤트가 올 때만 바뀐다 (매 프레임 아님)
     setShown((prev) => (prev && prev.note.text === latest.text ? { note: latest, id: prev.id } : { note: latest, id: (prev?.id ?? 0) + 1 }))
-    onSpeak?.(latest.text)
     clearTimeout(timer.current)
     timer.current = setTimeout(() => setShown(null), NOTE_SHOW_MS)
-  }, [latest, onSpeak])
+  }, [latest])
 
   const notice = poseNotice(pose)
-  const noticeText = notice?.tone === 'warn' || notice?.tone === 'error' ? notice.text : ''
-  useEffect(() => {
-    if (noticeText) onSpeak?.(noticeText)
-  }, [noticeText, onSpeak])
 
   // 교정·칭찬은 인식 중에만 오므로 떠 있는 동안은 그것을 먼저 보여준다
   let body

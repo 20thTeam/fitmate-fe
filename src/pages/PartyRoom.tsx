@@ -13,7 +13,6 @@ import { useWorkout } from '../hooks/useWorkout'
 import { useNow } from '../hooks/useNow'
 import { useToast } from '../hooks/useToast'
 import { useRepCounting } from '../hooks/useRepCounting'
-import { useCoachVoice } from '../hooks/useCoachVoice'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
 import ParticipantPanel, { FriendStrip, OnlineCount } from '../components/room/ParticipantPanel'
@@ -24,7 +23,6 @@ import WorkoutHud from '../components/room/WorkoutHud'
 import CoachBubble from '../components/room/CoachBubble'
 import StepDoneCard from '../components/room/StepDoneCard'
 import MyCameraPanel from '../components/room/MyCameraPanel'
-import VoiceToggle from '../components/room/VoiceToggle'
 import InviteModal from '../components/room/InviteModal'
 import { CameraLostDialog, EndConfirmDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
@@ -119,7 +117,6 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
   const isWorkingOut = phase === 'play' || phase === 'rest'
   const setTarget = item?.targetReps ?? item?.targetSeconds
   const isSetDone = !!setTarget && workout.setProgress >= setTarget
-  const voice = useCoachVoice()
 
   // 카메라로 유효 횟수 세기 (F-XNIIJM). 모델은 카메라 확인 단계부터 미리 받는다
   const poseCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -432,11 +429,10 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
             stream={camera.stream}
             isCameraOn={camera.isOn}
             overlay={phase === 'play' && <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
-            footer={<VoiceToggle voice={voice} />}
           />
           {/* 세트를 채웠거나 휴식이 끝나면 눈높이에 다음 단계 카드를 띄운다. 그동안 코치 말풍선은 쉰다 */}
           {doneCard ?? (phase === 'play' && (
-            <CoachBubble notes={record.postureNotes} {...counting} isRunning={workout.isRunning} onRetry={counting.retry} onSpeak={voice.speak} />
+            <CoachBubble notes={record.postureNotes} {...counting} isRunning={workout.isRunning} onRetry={counting.retry} />
           ))}
 
           {phase === 'play' ? (
