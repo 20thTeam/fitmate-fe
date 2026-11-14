@@ -67,8 +67,11 @@ const TORSO_DEPTH = 1
 
 /** 떨림을 줄이는 정도. 0이면 그대로, 1에 가까울수록 느리게 따라간다 */
 const ARM_SMOOTHING = 0.45
-/** 숙이면 다리가 몸통에 가려 좌표가 크게 흔들려서 팔보다 느리게 따라간다 */
-const LEG_SMOOTHING = 0.7
+/**
+ * 다리 따라가는 속도. 0.7로 두면 에어로빅처럼 작고 빠른 다리 동작(옆으로 벌리기)이 42%만 남아서 낮췄다.
+ * 0.4 + 아래 1~5° 기준이면 82%가 남고, 서 있을 때 떨림은 화면에서 1픽셀 아래다 (#91)
+ */
+const LEG_SMOOTHING = 0.4
 const TORSO_SMOOTHING = 0.5
 /** 몸 방향(옆으로 돈 각도)은 엉덩이·어깨 깊이 차이로 재서 흔들림이 커, 가장 느리게 따라간다 */
 const YAW_SMOOTHING = 0.8
@@ -86,6 +89,9 @@ const STRAIGHT_OFF_DEG = 155
  */
 const STILL_DEG = 4
 const MOVE_DEG = 16
+/** 다리는 옆으로 벌리기·무릎 들기가 10~30°라 팔보다 좁게 잡는다. 넓으면 이 동작들이 '흔들림'으로 지워진다 (#91) */
+const LEG_STILL_DEG = 1
+const LEG_MOVE_DEG = 5
 const STILL_FOLLOW = 0.03
 /** 몸 방향이 이 각도보다 작으면 정면으로 본다. 정면에 서 있을 때 몸이 좌우로 비틀거리지 않게 한다 */
 const YAW_DEADZONE_DEG = 12
@@ -317,7 +323,7 @@ export function createPoseRig(model: Object3D, { isSmoothed = true }: { isSmooth
       if (s.hasDir && isSmoothed) {
         // 방향 차이가 작으면(가만히 있을 때의 흔들림) 거의 안 따라가고, 크면 빨리 따라간다
         const gap = s.dir.angleTo(target)
-        const follow = STILL_FOLLOW + (1 - s.smoothing - STILL_FOLLOW) * smoothstep(toRad(STILL_DEG), toRad(MOVE_DEG), gap)
+        const follow = STILL_FOLLOW + (1 - s.smoothing - STILL_FOLLOW) * (s.leg ? smoothstep(toRad(LEG_STILL_DEG), toRad(LEG_MOVE_DEG), gap) : smoothstep(toRad(STILL_DEG), toRad(MOVE_DEG), gap))
         s.dir.lerp(target, follow).normalize()
       }
       else s.dir.copy(target)
