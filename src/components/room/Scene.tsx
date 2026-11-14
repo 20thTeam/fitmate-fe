@@ -33,11 +33,13 @@ interface Props {
    * 앞에 선 캐릭터가 가려지지 않게 한다 (#76). 영상이 안 되면 screen을 보여준다
    */
   screenVideo?: { src: string; label: string }
+  /** 운동 중 하단 패널이 있는지. 없으면 3D에서 캐릭터를 앞으로 당겨 크게 보여 준다 (#91) */
+  hasBottomPanel?: boolean
   children: ReactNode
 }
 
 /** 2D 그림 장면 (3D 로딩 중·실패 시). 공개방은 카메라 구도에 맞는 그림을 쓴다 */
-function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer, maxShown }: Omit<Props, 'children' | 'coachExerciseId'>) {
+function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer, maxShown }: Omit<Props, 'children' | 'coachExerciseId' | 'hasBottomPanel'>) {
   const background = theme === 'public'
     ? (view === 'front' ? publicFrontBg : publicAngleBg)
     : friendBg
@@ -50,7 +52,7 @@ function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer
   )
 }
 
-export default function Scene({ theme, screen, participants, selfId, onCheer, maxShown, view = 'tour', coachExerciseId, screenVideo, children }: Props) {
+export default function Scene({ theme, screen, participants, selfId, onCheer, maxShown, view = 'tour', coachExerciseId, screenVideo, hasBottomPanel, children }: Props) {
   // 2D 그림 장면은 캐릭터가 스크린 밖에 서서 DOM 영상으로 충분하다
   const flatScreen = screenVideo ? <VideoScreen src={screenVideo.src} label={screenVideo.label} fallback={screen} /> : screen
   const flat = <FlatScene theme={theme} view={view} screen={flatScreen} participants={participants} selfId={selfId} onCheer={onCheer} maxShown={maxShown} />
@@ -61,7 +63,7 @@ export default function Scene({ theme, screen, participants, selfId, onCheer, ma
           <ThreeBoundary fallback={flat}>
             {/* 3D를 받는 동안에는 같은 구도의 2D 그림을 보여준다 */}
             <Suspense fallback={<FlatScene theme={theme} view={view} />}>
-              <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} coachExerciseId={coachExerciseId} screenVideoSrc={screenVideo?.src} />
+              <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} coachExerciseId={coachExerciseId} screenVideoSrc={screenVideo?.src} hasBottomPanel={hasBottomPanel} />
             </Suspense>
           </ThreeBoundary>
         ) : flat}
