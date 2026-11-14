@@ -11,6 +11,9 @@ import { useRoom } from '../hooks/useRoom'
 import { useWorkout } from '../hooks/useWorkout'
 import { useNow } from '../hooks/useNow'
 import { useToast } from '../hooks/useToast'
+import { CAMERA_MESSAGE, useCamera } from '../hooks/useCamera'
+import { usePose } from '../hooks/usePose'
+import CameraCheck from '../components/CameraCheck'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
 import ParticipantPanel from '../components/room/ParticipantPanel'
@@ -25,11 +28,14 @@ import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 
 // 공개 운동방 (선셋 에어로빅, F-DXORMB) · Figma '공개 운동방' 시안
 // 열려 있는 동안 자유 입장, 입장 후 각자 시작. 인원 제한 없음. 결과는 다음 회차 추천에 반영하지 않는다.
-// 영상을 보며 자유롭게 따라 하는 방이라 카메라·횟수 세기 없이 참가자와 마치기만 둔다.
+// 영상을 보며 자유롭게 따라 하는 방이라 횟수 세기 없이 참가자와 마치기만 둔다.
+// 카메라는 내 관절 좌표로 캐릭터를 움직이고 다른 참가자에게 보여 주는 데만 쓴다 (#87).
 
 /** 공개 운동방 목록에 그릴 최대 인원 (F-DXORMB 권장안: 일부만 표시 + 실제 인원은 따로) */
 const SUNSET_SHOWN = 5
 const ENTER_STEP_MS = 400
+// 횟수를 세지 않으니 관절이 보이기만 하면 인식 중으로 본다
+const trackOnly = () => true
 
 export default function Sunset() {
   const profile = useApp((s) => s.profile)!
@@ -70,7 +76,7 @@ function SunsetClosed({ nextOpenAt, schedule }: { nextOpenAt: number; schedule: 
   )
 }
 
-type Phase = 'lobby' | 'entering' | 'play'
+type Phase = 'lobby' | 'camera' | 'entering' | 'play'
 
 function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesAt: number | null; schedule: PublicPartySchedule }) {
   const nav = useNavigate()
@@ -78,6 +84,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   const items = useMemo(() => [{ ...SUNSET_EXERCISE, sets: 1 }], [])
   const workout = useWorkout(items)
   const toast = useToast()
+  const camera = useCamera()
 
   const [phase, setPhase] = useState<Phase>('lobby')
   const [enterStartedAt, setEnterStartedAt] = useState(0)
@@ -87,6 +94,10 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   // 공개 파티 기록 ID를 미리 받아 둔다. 실패하면 끝낼 때 다시 받는다 (서버는 진행 중인 기록을 돌려줘 중복되지 않는다)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const now = useNow(phase === 'play' || phase === 'entering', phase === 'entering' ? 100 : 1000)
+
+  // 내 3D 캐릭터를 움직이고, 같은 좌표를 useRoom이 다른 참가자에게 보낸다. 모델은 카메라 확인 단계부터 미리 받는다
+  const pose = usePose({ stream: camera.stream, shouldLoad: phase !== 'lobby', isActive: phase === 'play', onFrame: trackOnly })
+  const isCameraBroken = phase === 'play' && camera.state !== 'on'
 
   const blocker = useBlocker(({ nextLocation }) => phase === 'play' && !isSaving && !nextLocation.pathname.startsWith('/result'))
 
@@ -102,6 +113,9 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   const enterSteps = [
     { label: '공개 운동방 연결 확인', isDone: room.state === 'joined' && enterElapsed > ENTER_STEP_MS },
     { label: '운동장 불러오는 중', isDone: enterElapsed > ENTER_STEP_MS * 2 },
+    { label: '카메라 불러오는 중', isDone: camera.isOn && enterElapsed > ENTER_STEP_MS * 3 },
+    // 모델을 못 받아도 운동은 할 수 있게 넘어간다 (운동 화면에서 다시 시도 안내)
+    { label: '자세 인식 준비 중', isDone: (pose.modelState === 'ready' || pose.modelState === 'error') && enterElapsed > ENTER_STEP_MS * 4 },
   ]
   const isEnterReady = enterSteps.every((s) => s.isDone)
   useEffect(() => {
@@ -145,6 +159,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
     try {
       await services.record.saveSession(session)
       room.updateSelf({ status: 'done' })
+      camera.stop()
       nav(`/result/${session.sessionId}`)
     } catch {
       setIsSaving(false)
@@ -175,6 +190,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   const record = workout.record
   if (!record) return null
 
+  if (phase === 'camera') return <CameraCheck camera={camera} theme="public" onBack={() => setPhase('lobby')} onConfirm={handleStart} confirmLabel="에어로빅 시작하기" isCounting={false} />
   if (phase === 'entering') return <EnterLoading theme="public" title="공개 운동방에 입장하는 중..." steps={enterSteps} />
 
   const isPartial = room.participants.length > SUNSET_SHOWN
@@ -221,7 +237,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
               ]}
               note={isProvisionalSchedule(schedule) && <ProvisionalBadge>운영 시각 임시</ProvisionalBadge>}
               action={
-                <button className="btn btn-brown" style={{ minWidth: 168, height: 56, fontSize: 20, justifyContent: 'space-between' }} disabled={isClosed} onClick={handleStart}>
+                <button className="btn btn-brown" style={{ minWidth: 168, height: 56, fontSize: 20, justifyContent: 'space-between' }} disabled={isClosed} onClick={() => setPhase('camera')}>
                   {isClosed ? '운영 끝' : <>시작하기<span aria-hidden>&gt;</span></>}
                 </button>
               }
@@ -235,6 +251,18 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
           <div style={{ position: 'absolute', right: 30, top: 145, width: 243 }}>{panel}</div>
           <div className="col center" style={{ position: 'absolute', left: 0, right: 0, bottom: 48, gap: 10, pointerEvents: 'none' }}>
             {isClosed && <span className="chip chip-ghost">운영은 끝났지만 지금 운동은 마칠 수 있어요</span>}
+            {/* 횟수를 세지 않아 운동을 막지 않고, 캐릭터가 멈춘 이유와 다시 켜는 버튼만 알린다 */}
+            {isCameraBroken ? (
+              <span className="chip chip-ghost row" style={{ gap: 8, pointerEvents: 'auto' }}>
+                내 캐릭터가 멈춰 있어요. {CAMERA_MESSAGE[camera.state]}
+                <button className="btn btn-dark btn-sm" onClick={() => camera.start(camera.deviceId || undefined)}>카메라 다시 켜기</button>
+              </span>
+            ) : pose.modelState === 'error' && (
+              <span className="chip chip-ghost row" style={{ gap: 8, pointerEvents: 'auto' }}>
+                자세 인식을 불러오지 못해 내 캐릭터가 따라 움직이지 않아요.
+                <button className="btn btn-dark btn-sm" onClick={pose.retry}>다시 시도</button>
+              </span>
+            )}
             <button className="btn btn-brown" style={{ minWidth: 220, height: 64, fontSize: 22, justifyContent: 'space-between', pointerEvents: 'auto' }} disabled={isSaving} onClick={() => setIsEndConfirmOpen(true)}>
               운동 마치기<span aria-hidden>&gt;</span>
             </button>

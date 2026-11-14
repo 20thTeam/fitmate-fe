@@ -40,9 +40,11 @@ interface Props {
   onBack: () => void
   onConfirm: () => void
   confirmLabel?: string
+  /** 횟수를 세는 방인지. 권한 안내 문구가 달라진다 */
+  isCounting?: boolean
 }
 
-export default function CameraCheck({ camera, theme, onBack, onConfirm, confirmLabel = '운동 시작하기' }: Props) {
+export default function CameraCheck({ camera, theme, onBack, onConfirm, confirmLabel = '운동 시작하기', isCounting = true }: Props) {
   const { state, start, stop } = camera
   const poseCanvasRef = useRef<HTMLCanvasElement>(null)
   const [checked, setChecked] = useState<Set<string>>(new Set())
@@ -199,8 +201,8 @@ export default function CameraCheck({ camera, theme, onBack, onConfirm, confirmL
         </section>
       </div>
 
-      {isIntroOpen && <CameraIntroDialog onAllow={handleAllow} onLater={onBack} />}
-      {isBlockedOpen && <CameraBlockedDialog onRetry={handleRetry} onBack={onBack} onClose={() => setIsBlockedClosed(true)} />}
+      {isIntroOpen && <CameraIntroDialog onAllow={handleAllow} onLater={onBack} isCounting={isCounting} />}
+      {isBlockedOpen && <CameraBlockedDialog onRetry={handleRetry} onBack={onBack} onClose={() => setIsBlockedClosed(true)} isCounting={isCounting} />}
     </Backdrop>
   )
 }
