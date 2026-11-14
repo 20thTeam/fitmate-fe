@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
 import { services } from '../services'
 import { SUNSET_ROOM_ID, useApp } from '../store/app'
@@ -14,6 +14,7 @@ import { useToast } from '../hooks/useToast'
 import { CAMERA_MESSAGE, useCamera } from '../hooks/useCamera'
 import { usePose } from '../hooks/usePose'
 import CameraCheck from '../components/CameraCheck'
+import MyCameraPanel from '../components/room/MyCameraPanel'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
 import ParticipantPanel from '../components/room/ParticipantPanel'
@@ -34,6 +35,8 @@ import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 /** 공개 운동방 목록에 그릴 최대 인원 (F-DXORMB 권장안: 일부만 표시 + 실제 인원은 따로) */
 const SUNSET_SHOWN = 5
 const ENTER_STEP_MS = 400
+/** 운동 중 참가자 목록 위치. 오른쪽 위 내 카메라 칸(.my-camera) 바로 아래 */
+const SUNSET_PANEL_TOP = 316
 // 횟수를 세지 않으니 관절이 보이기만 하면 인식 중으로 본다
 const trackOnly = () => true
 
@@ -96,7 +99,8 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   const now = useNow(phase === 'play' || phase === 'entering', phase === 'entering' ? 100 : 1000)
 
   // 내 3D 캐릭터를 움직이고, 같은 좌표를 useRoom이 다른 참가자에게 보낸다. 모델은 카메라 확인 단계부터 미리 받는다
-  const pose = usePose({ stream: camera.stream, shouldLoad: phase !== 'lobby', isActive: phase === 'play', onFrame: trackOnly })
+  const poseCanvasRef = useRef<HTMLCanvasElement>(null)
+  const pose = usePose({ stream: camera.stream, shouldLoad: phase !== 'lobby', isActive: phase === 'play', onFrame: trackOnly, canvasRef: poseCanvasRef })
   const isCameraBroken = phase === 'play' && camera.state !== 'on'
 
   const blocker = useBlocker(({ nextLocation }) => phase === 'play' && !isSaving && !nextLocation.pathname.startsWith('/result'))
@@ -248,7 +252,13 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
 
       {phase === 'play' && (
         <>
-          <div style={{ position: 'absolute', right: 30, top: 145, width: 243 }}>{panel}</div>
+          {/* 내가 카메라에 어떻게 찍히는지 보여 준다 (#89). 참가자 목록은 그 아래에 둔다 */}
+          <MyCameraPanel
+            stream={camera.stream}
+            isCameraOn={camera.isOn}
+            overlay={<canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
+          />
+          <div style={{ position: 'absolute', right: 20, top: SUNSET_PANEL_TOP, width: 300 }}>{panel}</div>
           <div className="col center" style={{ position: 'absolute', left: 0, right: 0, bottom: 48, gap: 10, pointerEvents: 'none' }}>
             {isClosed && <span className="chip chip-ghost">운영은 끝났지만 지금 운동은 마칠 수 있어요</span>}
             {/* 횟수를 세지 않아 운동을 막지 않고, 캐릭터가 멈춘 이유와 다시 켜는 버튼만 알린다 */}
