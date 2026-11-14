@@ -2,7 +2,7 @@
 // 서버 챌린지 API가 없을 때 http 구현도 이걸 쓴다.
 
 import { CONTEST_RULES } from '../../config/contest'
-import { buildContestStandings, contestStatusAt } from '../../lib/contest'
+import { buildContestStandings, buildContestTrend, contestStatusAt } from '../../lib/contest'
 import type { ContestGame } from '../../types/domain'
 import type { ContestService } from '../ports'
 import { localRealtime } from './realtime'
@@ -39,6 +39,9 @@ export const localContest: ContestService = {
   liveRealtime: () => localRealtime,
   async getStandings() {
     return buildContestStandings(readGames().map(withStatus).filter((g) => g.status === 'FINISHED'))
+  },
+  async getTrend() {
+    return buildContestTrend(readGames().map(withStatus).filter((g) => g.status === 'FINISHED'), Date.now())
   },
   async joinGame({ nickname, schoolId }) {
     const games = readGames()

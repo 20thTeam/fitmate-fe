@@ -24,17 +24,23 @@ export const CONTEST_RULES = {
 /**
  * 참가 학교 (시연 운영진 확정 목록, 가나다순).
  * schoolId는 서버에 그대로 저장되니 한 번 정한 뒤에는 바꾸지 않는다.
+ * shortName·color는 순위 화면(그래프·막대) 표시용으로 Figma '대항전 마지막 페이지' 시안 값이다.
  */
-export const CONTEST_SCHOOLS: { schoolId: string; name: string }[] = [
-  { schoolId: 'catholic', name: '가톨릭대학교' },
-  { schoolId: 'khu', name: '경희대학교' },
-  { schoolId: 'kw', name: '광운대학교' },
-  { schoolId: 'seoultech', name: '서울과학기술대학교' },
-  { schoolId: 'skhu', name: '성공회대학교' },
-  { schoolId: 'shinhan', name: '신한대학교' },
-  { schoolId: 'ptu', name: '평택대학교' },
-  { schoolId: 'hufs', name: '한국외국어대학교' },
+export const CONTEST_SCHOOLS: { schoolId: string; name: string; shortName: string; color: string }[] = [
+  { schoolId: 'catholic', name: '가톨릭대학교', shortName: '가톨릭대', color: '#7da6ff' },
+  { schoolId: 'khu', name: '경희대학교', shortName: '경희대', color: '#a47195' },
+  { schoolId: 'kw', name: '광운대학교', shortName: '광운대', color: '#c57979' },
+  { schoolId: 'seoultech', name: '서울과학기술대학교', shortName: '서울과학기술대', color: '#5fd3b0' },
+  { schoolId: 'skhu', name: '성공회대학교', shortName: '성공회대', color: '#e3bf8c' },
+  { schoolId: 'shinhan', name: '신한대학교', shortName: '신한대', color: '#a6baff' },
+  { schoolId: 'ptu', name: '평택대학교', shortName: '평택대', color: '#adda9e' },
+  { schoolId: 'hufs', name: '한국외국어대학교', shortName: '한국외대', color: '#ac90be' },
 ]
+
+const schoolOf = (id: string) => CONTEST_SCHOOLS.find((s) => s.schoolId === id)
+export const schoolName = (id: string) => schoolOf(id)?.name ?? id
+export const schoolShortName = (id: string) => schoolOf(id)?.shortName ?? id
+export const schoolColor = (id: string) => schoolOf(id)?.color ?? '#a2a7b5'
 
 // 학교 로고. src/assets/schools/{schoolId}.svg(또는 .png·.webp·.jpg·.jpeg)를 넣으면 학교 고르기 버튼에 자동으로 붙는다.
 // 파일이 없는 학교는 이름만 보인다

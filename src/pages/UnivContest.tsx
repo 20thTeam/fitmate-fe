@@ -20,6 +20,7 @@ import PoseStatus from '../components/room/PoseStatus'
 import Scene from '../components/room/Scene'
 import ParticipantPanel from '../components/room/ParticipantPanel'
 import { CameraPreview, Logo } from '../components/ui'
+import { ContestStage, ResultNotice, StandingsPanels, TrophyTitle } from '../components/contest/ContestRanking'
 
 type Phase = 'board' | 'join' | 'game'
 
@@ -98,6 +99,7 @@ export default function UnivContest() {
     const t = setInterval(loadStandings, BOARD_REFRESH_MS)
     return () => clearInterval(t)
   }, [isStandingsShown, loadStandings])
+
 
   // ── 카메라 · 자세 인식 ──
   const camera = useCamera()
@@ -243,6 +245,35 @@ export default function UnivContest() {
     setPhase('board')
   }
 
+  /** [개발용] 카메라로 한 판 하지 않고 판 결과 화면을 띄운다. 서버·저장소에는 아무것도 보내지 않는다 */
+  const previewResult = () => {
+    const now = Date.now()
+    const me = { playerId: 'dev-me', nickname: nickname.trim() || '나', schoolId: schoolId || CONTEST_SCHOOLS[0].schoolId, reps: 12, hasSubmitted: true }
+    receiveGame({
+      gameId: 'dev-preview',
+      status: 'FINISHED',
+      startAt: now - 40_000,
+      durationMs: CONTEST_RULES.durationMs,
+      maxPlayers: CONTEST_RULES.maxPlayers,
+      serverNow: now,
+      players: [
+        { playerId: 'dev-a', nickname: '친구1', schoolId: 'seoultech', reps: 15, hasSubmitted: true },
+        me,
+        { playerId: 'dev-b', nickname: '친구2', schoolId: 'kw', reps: null, hasSubmitted: true },
+      ],
+    })
+    setPlayerId(me.playerId)
+    setHasSubmitted(true)
+    setPhase('game')
+  }
+
+  /** 현황·결과·자세히 보기에서 다음 판 참가 화면으로 */
+  const goJoin = () => {
+    setGame(null)
+    setActionError('')
+    setPhase('join')
+  }
+
   const leave = async () => {
     if (game) await services.contest.leaveGame(game.gameId, playerId).catch(() => {})
     backToBoard()
@@ -313,6 +344,46 @@ export default function UnivContest() {
     )
   }
 
+  if (view === 'board' || (view === 'result' && game)) {
+    const summary = view === 'result' && game ? (
+      <>
+        <TrophyTitle>학교별 누적 스쿼트 순위</TrophyTitle>
+        <ResultNotice {...resultNoticeOf(game, playerId)} />
+        <StandingsArea standings={standings} onRetry={loadStandings} />
+        {/* 추이·막대(시안의 '순위 자세히 보기')는 운영 화면에서 여는 순위 전광판(/univ-contest/board)에서만 본다 */}
+        <div className="contest-actions" style={{ marginTop: 62 }}>
+          <button type="button" className="contest-btn" onClick={goJoin}>다음 회차 참가</button>
+        </div>
+      </>
+    ) : (
+      <>
+        <h1 className="contest-hero">학교 대항 스쿼트 20초 챌린지</h1>
+        <div className="contest-hero-chip">{`한 판 최대 ${CONTEST_RULES.maxPlayers}명  20초 동안 많이 한 사람이 1등`}</div>
+        <StandingsArea standings={standings} onRetry={loadStandings} />
+        {/* 추이·막대 전광판은 운영 화면(/admin, 암호) 안의 버튼으로만 연다. 참가 화면에는 입구를 두지 않는다 (팀 결정) */}
+        <div style={{ marginTop: 52 }}>
+          <button type="button" className="contest-btn is-lg" onClick={goJoin}>챌린지 참가하기 →</button>
+        </div>
+      </>
+    )
+    return (
+      <Backdrop theme="public">
+        <ContestStage>
+          {summary}
+          {storage === 'device' && (
+            <span className="chip chip-provisional contest-device-note" style={{ position: 'absolute', top: 40 }}>서버 연결 안 됨 · 이 컴퓨터에만 저장돼서 다른 컴퓨터와 같은 판에 못 들어가요</span>
+          )}
+          {import.meta.env.DEV && view === 'board' && (
+            <button type="button" className="btn btn-dark btn-sm" style={{ position: 'absolute', right: 28, bottom: 28 }} onClick={previewResult}>
+              [개발용] 결과 화면 보기
+            </button>
+          )}
+        </ContestStage>
+        <Logo isLight />
+      </Backdrop>
+    )
+  }
+
   return (
     <Backdrop theme="public" isDim>
       <Logo isLight />
@@ -324,10 +395,6 @@ export default function UnivContest() {
             {storage === 'device' && <span className="chip chip-provisional">서버 연결 안 됨 · 이 컴퓨터에만 저장돼서 다른 컴퓨터와 같은 판에 못 들어가요</span>}
           </div>
         </header>
-
-        {view === 'board' && (
-          <Board standings={standings} onRetry={loadStandings} onJoin={() => setPhase('join')} />
-        )}
 
         {view === 'join' && (
           <section className="card col" style={{ width: 'min(960px, 100%)', gap: 20 }} aria-label="참가 준비">
@@ -371,9 +438,6 @@ export default function UnivContest() {
           </section>
         )}
 
-        {view === 'result' && game && (
-          <GameResult game={game} playerId={playerId} standings={standings} onNext={() => { setGame(null); setPhase('join') }} onBoard={backToBoard} />
-        )}
       </div>
     </Backdrop>
   )
@@ -381,65 +445,31 @@ export default function UnivContest() {
 
 // ── 화면 조각 ──
 
-function Board({ standings, onRetry, onJoin }: { standings: Load<ContestStandings>; onRetry: () => void; onJoin: () => void }) {
+/** 현황 패널 자리. 불러오는 중·실패도 같은 크기 안에서 보여준다 */
+function StandingsArea({ standings, onRetry }: { standings: Load<ContestStandings>; onRetry: () => void }) {
+  if (standings.state === 'ok') return <StandingsPanels standings={standings.data} />
   return (
-    <section className="col center" style={{ width: 'min(960px, 100%)', gap: 20 }} aria-label="현재 순위">
-      {standings.state === 'loading' && <div className="card" role="status" style={{ width: '100%', textAlign: 'center' }}>현황을 불러오는 중…</div>}
-      {standings.state === 'error' && (
-        <div className="card col center" role="alert" style={{ width: '100%' }}>
-          <p>현황을 불러오지 못했어요. {standings.message}</p>
-          <button className="btn btn-dark btn-sm" onClick={onRetry}>다시 시도</button>
-        </div>
-      )}
-      {standings.state === 'ok' && <StandingsView standings={standings.data} />}
-      <button className="btn btn-plum btn-xl" onClick={onJoin}>
-        <span style={{ flex: 1, textAlign: 'center' }}>챌린지 참가하기</span>
-        <span aria-hidden>&gt;</span>
-      </button>
-    </section>
-  )
-}
-
-function StandingsView({ standings }: { standings: ContestStandings }) {
-  if (standings.gameCount === 0) {
-    return (
-      <div className="card col center" style={{ width: '100%', gap: 8 }}>
-        <h2 className="t-h2">아직 끝난 판이 없어요</h2>
-        <p className="t-soft">첫 판을 시작해 우리 학교 기록을 남겨 보세요.</p>
-      </div>
-    )
-  }
-  const max = Math.max(...standings.schools.map((s) => s.totalReps), 1)
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 3fr) minmax(0, 2fr)', gap: 20, width: '100%' }}>
-      <div className="card col" style={{ gap: 14 }}>
-        <h2 className="t-h2">학교별 누적 스쿼트</h2>
-        <ol className="col" style={{ gap: 12, listStyle: 'none', padding: 0, margin: 0 }}>
-          {standings.schools.map((s, i) => (
-            <li key={s.schoolId} className="col" style={{ gap: 6 }}>
-              <div className="row" style={{ justifyContent: 'space-between' }}>
-                <strong>{i + 1}. {schoolName(s.schoolId)}</strong>
-                <span><strong style={{ fontSize: 22 }}>{s.totalReps}</strong>회 <span className="t-soft t-small">· {s.entryCount}명 참가</span></span>
-              </div>
-              <div className="bar"><div className="bar-fill" style={{ width: `${(s.totalReps / max) * 100}%` }} /></div>
-            </li>
-          ))}
-        </ol>
-        <p className="t-small t-soft">끝난 판 {standings.gameCount}개 기준 · 자세가 인식되지 않은 기록은 빼고 더해요</p>
-      </div>
-      <div className="card col" style={{ gap: 14 }}>
-        <h2 className="t-h2">한 판 최고 기록</h2>
-        <ol className="col" style={{ gap: 10, listStyle: 'none', padding: 0, margin: 0 }}>
-          {standings.topPlayers.map((p, i) => (
-            <li key={`${p.nickname}-${i}`} className="row" style={{ justifyContent: 'space-between' }}>
-              <span>{i + 1}. <strong>{p.nickname}</strong> <span className="t-soft t-small">{schoolName(p.schoolId)}</span></span>
-              <strong>{p.reps}회</strong>
-            </li>
-          ))}
-        </ol>
+    <div className="contest-panels">
+      <div className="contest-panel col center" style={{ width: 1150, height: 390, gap: 16 }} role={standings.state === 'error' ? 'alert' : 'status'}>
+        <p style={{ fontSize: 22, fontWeight: 700 }}>{standings.state === 'loading' ? '현황을 불러오는 중…' : `현황을 불러오지 못했어요. ${standings.message}`}</p>
+        {standings.state === 'error' && <button type="button" className="contest-btn" onClick={onRetry}>다시 시도</button>}
       </div>
     </div>
   )
+}
+
+/** 판 결과 안내 띠 내용. 내 기록이 있으면 이 판 등수, 없으면 시안처럼 '자세 인식 안 됨' */
+function resultNoticeOf(game: ContestGame, playerId: string) {
+  const ranked = rankContestPlayers(game.players)
+  const winner = ranked[0]
+  const mine = game.players.find((p) => p.playerId === playerId)
+  const myRank = ranked.findIndex((p) => p.playerId === playerId) + 1
+  return {
+    icon: myRank > 0 ? String(myRank) : '!',
+    title: winner ? `이번 판 1등 ${winner.nickname} · ${winner.reps}회` : '이번 판은 자세가 인식된 기록이 없어요',
+    sub: mine ? `${mine.nickname} (나) · ${schoolName(mine.schoolId)}` : '',
+    badge: !mine ? '결과 없음' : mine.reps === null ? (mine.hasSubmitted ? '자세 인식 안 됨' : '결과 없음') : `내 기록 ${mine.reps}회 · ${myRank}등`,
+  }
 }
 
 interface CameraPanelProps {
@@ -545,45 +575,5 @@ function StageScreen({ view, status, game, serverNow, hasSubmitted, reps, hurry 
       <strong style={{ fontSize: 44 }}>끝! 내 기록 {reps}회</strong>
       <span style={{ fontSize: 18 }}>{hasSubmitted ? (waiting > 0 ? `다른 참가자 ${waiting}명의 결과를 기다리는 중…` : '순위를 계산하는 중…') : '결과를 보내는 중…'}</span>
     </div>
-  )
-}
-
-function GameResult({ game, playerId, standings, onNext, onBoard }: { game: ContestGame; playerId: string; standings: Load<ContestStandings>; onNext: () => void; onBoard: () => void }) {
-  const ranked = rankContestPlayers(game.players)
-  const unranked = game.players.filter((p) => p.reps === null)
-  const winner = ranked[0]
-  return (
-    <section className="col center" style={{ width: 'min(960px, 100%)', gap: 20 }} aria-label="이번 판 결과">
-      <div className="card col center" style={{ width: '100%', gap: 10 }}>
-        {winner ? (
-          <>
-            <span className="t-h3">이번 판 1등</span>
-            <span style={{ fontSize: 48, fontWeight: 800 }}>{winner.nickname} · {winner.reps}회</span>
-            <span className="t-soft">{schoolName(winner.schoolId)}</span>
-          </>
-        ) : (
-          <h2 className="t-h2">이번 판은 자세가 인식된 기록이 없어요</h2>
-        )}
-        <ol className="col" style={{ gap: 8, listStyle: 'none', padding: 0, margin: '8px 0 0', width: 520 }}>
-          {ranked.map((p, i) => (
-            <li key={p.playerId} className="row" style={{ justifyContent: 'space-between' }}>
-              <span>{i + 1}. <strong>{p.nickname}{p.playerId === playerId && ' (나)'}</strong> <span className="t-soft t-small">{schoolName(p.schoolId)}</span></span>
-              <strong>{p.reps}회</strong>
-            </li>
-          ))}
-          {unranked.map((p) => (
-            <li key={p.playerId} className="row t-soft" style={{ justifyContent: 'space-between' }}>
-              <span>- {p.nickname}{p.playerId === playerId && ' (나)'} <span className="t-small">{schoolName(p.schoolId)}</span></span>
-              <span>{p.hasSubmitted ? '자세 인식 안 됨' : '결과 없음'}</span>
-            </li>
-          ))}
-        </ol>
-      </div>
-      {standings.state === 'ok' && <StandingsView standings={standings.data} />}
-      <div className="row center">
-        <button className="btn btn-secondary" onClick={onBoard}>현황 보기</button>
-        <button className="btn btn-primary btn-lg" onClick={onNext}>다음 판 참가</button>
-      </div>
-    </section>
   )
 }

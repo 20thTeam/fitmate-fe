@@ -223,4 +223,30 @@ export interface ContestStandings {
   /** 한 판 기록 기준 개인 상위 */
   topPlayers: ContestTopPlayer[]
   gameCount: number
+  /** 참가자별 최고 기록 전체 (최고 기록 큰 순). 같은 이름·학교는 한 사람. 서버가 아직 안 주면 빈 목록 */
+  players: ContestPlayerBest[]
+}
+
+export interface ContestPlayerBest {
+  nickname: string
+  schoolId: string
+  /** 한 판 최고 횟수 */
+  bestReps: number
+  /** 측정된 기록 수 */
+  entryCount: number
+}
+
+/** 학교별 누적 횟수·순위의 1시간 단위 추이 (fitmate-be#43) */
+export interface ContestTrend {
+  /** 오래된 순. 끝난 판이 없으면 빈 목록 */
+  buckets: ContestTrendBucket[]
+}
+
+export interface ContestTrendBucket {
+  /** 구간 시작 시각 (epoch ms) */
+  startAt: number
+  /** 구간 시작 시 (한국 시간 0~23) */
+  hour: number
+  /** 이 구간까지 기록이 있는 학교 (rank 순) */
+  schools: { schoolId: string; totalReps: number; hourReps: number; rank: number }[]
 }
