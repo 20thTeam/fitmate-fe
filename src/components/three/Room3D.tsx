@@ -1,6 +1,6 @@
 // 3D 운동방 캔버스. 이 파일은 lazy로 불러서 운동방에 들어갈 때만 three.js를 받는다.
 // 스크린 내용과 이름표는 캔버스 위에 DOM으로 겹치고, 매 프레임 3D 위치에 맞춰 옮긴다.
-import { useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Vector3 } from 'three'
 import type { Participant } from '../../types/domain'
@@ -8,6 +8,7 @@ import type { Theme } from '../Backdrop'
 import Environment from './Environment'
 import Characters3D from './Characters3D'
 import CoachScreen from './CoachScreen'
+import VideoScreen3D from './VideoScreen3D'
 import { PALETTES } from './palette'
 import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
 
@@ -190,14 +191,19 @@ interface Props {
   view: CameraView
   /** 있으면 스크린 왼쪽에 AI 코치가 이 운동 동작을 반복한다 (친구 운동방, 운동·휴식 중) */
   coachExerciseId?: string
+  /** 있으면 스크린에 이 영상을 반복 재생한다. 영상을 못 불러오면 screen을 대신 보여준다 */
+  screenVideoSrc?: string
 }
 
-export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId }: Props) {
+export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc }: Props) {
   const palette = PALETTES[theme]
   const screenRef = useRef<HTMLDivElement>(null)
   const tagRefs = useRef(new Map<string, HTMLElement>())
   const shown = selfId ? participants.slice(0, maxShown) : []
   const tagIds = shown.map((p) => p.userId)
+  const [hasVideoError, setHasVideoError] = useState(false)
+  const handleVideoError = useCallback(() => setHasVideoError(true), [])
+  const isVideoShown = Boolean(screenVideoSrc) && !hasVideoError
 
   return (
     <>
@@ -225,13 +231,14 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
           shadow-bias={-0.0004}
         />
         <Environment theme={theme} palette={palette} />
+        {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} />}
         {coachExerciseId && <CoachScreen exerciseId={coachExerciseId} background={palette.panel} />}
         {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={ROW_Z[view]} onCheer={onCheer} />}
         <CameraRig view={view} />
         <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={ROW_Z[view]} tagY={TAG_Y[view]} />
       </Canvas>
 
-      {screen && (
+      {screen && !isVideoShown && (
         <div ref={screenRef} className="screen-3d" style={{ width: SCREEN_PX_W, height: SCREEN_PX_H }}>
           {screen}
         </div>

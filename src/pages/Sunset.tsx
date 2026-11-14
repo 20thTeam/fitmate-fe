@@ -21,7 +21,6 @@ import ParticipantPanel, { FriendStrip } from '../components/room/ParticipantPan
 import { RoutineOrderPanel } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
-import VideoScreen from '../components/room/VideoScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
 import CoachBubble from '../components/room/CoachBubble'
 import MyCameraPanel from '../components/room/MyCameraPanel'
@@ -232,13 +231,8 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
     <Scene
       theme="public"
       // 공개방은 동작 안내 카드 대신 에어로빅 영상을 계속 반복해서 틀어 둔다 (#66). 영상이 안 되면 안내 카드
-      screen={
-        <VideoScreen
-          src={sunsetVideo}
-          label="선셋 에어로빅 따라하기 영상"
-          fallback={<GuideScreen exerciseId={phase === 'play' ? SUNSET_EXERCISE.exerciseId : undefined} name={SUNSET_EXERCISE.name} idleTitle="선셋 에어로빅이 열렸어요!" idleDesc={`지금 ${room.participants.length}명 참가 중 · 준비되면 각자 시작해요`} />}
-        />
-      }
+      screenVideo={{ src: sunsetVideo, label: '선셋 에어로빅 따라하기 영상' }}
+      screen={<GuideScreen exerciseId={phase === 'play' ? SUNSET_EXERCISE.exerciseId : undefined} name={SUNSET_EXERCISE.name} idleTitle="선셋 에어로빅이 열렸어요!" idleDesc={`지금 ${room.participants.length}명 참가 중 · 준비되면 각자 시작해요`} />}
       participants={room.participants}
       selfId={profile.userId}
       maxShown={SUNSET_SHOWN}
