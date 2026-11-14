@@ -779,17 +779,12 @@ button.check-item:hover { color: #fff; }
   .count-pop { opacity: 0; }
 }
 
-/* ───────── 홈 (F-HIPEHA): 밝은 라벤더 바탕, 그림 카드 두 개 + 기록·챌린지 줄 ───────── */
-.home {
-  min-height: 100vh;
-  background: linear-gradient(160deg, #f1eff9 0%, #e9e4f5 55%, #e3dcf2 100%);
-  color: #36323f;
-}
+/* ───────── 홈 (F-HIPEHA): 기존 노을 배경(Backdrop) 위에 흰 카드 두 개 + 기록·챌린지 줄 ───────── */
 .home-body {
   max-width: 1360px; margin: 0 auto; padding: 96px 40px 48px;
   display: flex; flex-direction: column; gap: 26px;
 }
-.home-hello { font-size: 54px; font-weight: 800; letter-spacing: -0.02em; color: #36323f; margin-bottom: 8px; }
+.home-hello { font-size: 54px; font-weight: 800; letter-spacing: -0.02em; color: #fff; text-shadow: 0 2px 12px rgba(60, 30, 70, 0.35); margin-bottom: 8px; }
 .home-main { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
 .home-card {
   display: flex; flex-direction: column; padding: 16px;

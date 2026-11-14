@@ -8,13 +8,14 @@ import { durationLabel } from '../lib/format'
 import { sunsetOpenLabel } from '../lib/sunset'
 import { useSunsetStatus } from '../hooks/useSunsetStatus'
 import { CONTEST_RULES } from '../config/contest'
+import Backdrop from '../components/Backdrop'
 import { Logo, ProvisionalBadge } from '../components/ui'
 import { PARTY_MAX } from '../config/provisional'
 // 카드 그림: 운동방 배경 (실제 운동방 화면 캡처가 생기면 바꿔 끼운다)
 import friendRoomImage from '../assets/bg/room-friend.jpg'
 import sunsetRoomImage from '../assets/bg/public-stage.jpg'
 
-// F-HIPEHA 홈. 밝은 라벤더 바탕에 운동방 그림 카드 두 개(친구·공개)와 기록·챌린지 줄을 둔다.
+// F-HIPEHA 홈. 기존 노을 배경 위에 운동방 그림 카드 두 개(친구·공개)와 기록·챌린지 줄을 둔다.
 // 친구 운동이 메인, 공개 운동방(선셋)은 보조 카드 (F-HIPEHA rules)
 // 아래 학교 대항 챌린지 카드는 시연장 이벤트(/univ-contest) 입구라 기획 기능 ID가 없다
 export default function Home() {
@@ -49,8 +50,8 @@ export default function Home() {
   const stats = sessions ? summarize(sessions) : null
 
   return (
-    <main className="home">
-      <Logo />
+    <Backdrop isDim>
+      <Logo isLight />
       <div className="home-body">
         <h1 className="home-hello">안녕하세요, {profile.nickname}님</h1>
 
@@ -106,6 +107,6 @@ export default function Home() {
           <button className="home-btn is-dark is-small" onClick={() => nav('/univ-contest')}>챌린지 보기</button>
         </section>
       </div>
-    </main>
+    </Backdrop>
   )
 }
