@@ -6,7 +6,7 @@
 import type {
   CheerEvent,
   ContestGame,
-  ContestStandings,
+  ContestStandings, ContestTrend,
   FriendRoom,
   GoalId,
   Participant,
@@ -177,6 +177,8 @@ export interface ContestService {
   storage(): 'server' | 'device' | 'unknown'
   /** 학교별 누적 횟수와 개인 상위 기록 */
   getStandings(): Promise<ContestStandings>
+  /** 학교별 누적 횟수·순위의 1시간 단위 추이 */
+  getTrend(): Promise<ContestTrend>
   /** 모집 중인 판에 들어간다. 없거나 가득 찼으면 새 판을 만든다 */
   joinGame(input: { nickname: string; schoolId: string }): Promise<{ playerId: string; game: ContestGame }>
   getGame(gameId: string): Promise<ContestGame>

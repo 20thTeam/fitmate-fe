@@ -4,7 +4,7 @@
 // (BE 배포 전에 열어 둔 탭이 계속 노트북마다 따로 저장해서 다른 컴퓨터와 같은 판에 못 들어가던 문제).
 // 현황은 판 밖(현황·결과 화면)에서만 받아서 판 도중에 저장 위치가 바뀌지 않는다. 서버를 쓰기 시작하면 다시 브라우저 저장으로 돌아가지 않는다.
 
-import type { ContestGame, ContestStandings } from '../../types/domain'
+import type { ContestGame, ContestStandings, ContestTrend } from '../../types/domain'
 import type { ContestService } from '../ports'
 import { localContest } from '../local/contest'
 import { ApiError, request, WS_URL } from './client'
@@ -74,7 +74,8 @@ export const httpContest: ContestService = {
     try {
       const s = await request<ContestStandings>(`${BASE}/standings`)
       storage = 'server'
-      return s
+      // 참가자별 기록(players)은 fitmate-be#43부터 온다. 그 전 서버면 빈 목록
+      return { ...s, players: s.players ?? [] }
     } catch (e) {
       // 서버를 쓰던 중 생긴 오류는 그대로 실패로 보여준다
       if (storage === 'server') throw e
@@ -83,6 +84,11 @@ export const httpContest: ContestService = {
       if (storage === 'device') return localContest.getStandings()
       throw e
     }
+  },
+  async getTrend() {
+    if (storage === 'device') return localContest.getTrend()
+    const t = await request<{ buckets: { startAt: string; hour: number; schools: ContestTrend['buckets'][number]['schools'] }[] }>(`${BASE}/trend`)
+    return { buckets: t.buckets.map((b) => ({ ...b, startAt: Date.parse(b.startAt) })) }
   },
   async joinGame(input) {
     if (storage === 'device') return localContest.joinGame(input)
