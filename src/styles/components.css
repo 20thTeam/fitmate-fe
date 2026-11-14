@@ -567,8 +567,13 @@ button.check-item:hover { color: #fff; }
 .ring.is-done .ring-value, .ring.is-done .ring-max { color: var(--c-ring-done); }
 .hud-action { min-height: 92px; font-size: 28px; font-weight: 800; border-radius: var(--radius); justify-content: space-between; padding: 0 26px; }
 @keyframes hud-ready { 50% { box-shadow: 0 0 0 10px rgba(127, 211, 107, 0.12); } }
-.hud-sub { font-size: 16px; color: var(--c-text-soft); text-decoration: underline; padding: 6px; align-self: center; }
-.hud-sub:hover { color: #fff; }
+/* 운동 끝내기: 2m 거리에서도 보이게 버튼 모양으로 두되, 다음 단계 버튼보다는 눈에 덜 띄게 테두리만 준다 */
+.hud-sub {
+  width: 100%; min-height: 54px; padding: 0 16px; border-radius: var(--radius-pill);
+  font-size: 21px; font-weight: 800; color: #fff;
+  background: rgba(255, 255, 255, 0.1); border: 2px solid rgba(255, 255, 255, 0.55);
+}
+.hud-sub:hover { background: rgba(255, 255, 255, 0.22); border-color: #fff; }
 
 /* 스크린 위 '오늘의 운동' 진행 바 */
 .step-bar {
