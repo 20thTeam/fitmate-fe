@@ -1,6 +1,6 @@
-// 운동 중 횟수 링 (Figma: '07 / 12회'). max가 없으면 링을 비워 두고 숫자만 보여준다.
+// 운동 중 횟수 링 ('7 / 12회'). max가 없으면 링을 비워 두고 숫자만 보여준다.
+// 2m 거리에서 읽는 숫자라 앞자리 0을 붙이지 않는다 ('07'은 '0'이 눈에 먼저 들어온다).
 import type { CSSProperties } from 'react'
-import { twoDigits } from '../../lib/format'
 
 const R = 60
 const C = 2 * Math.PI * R
@@ -34,7 +34,7 @@ export default function ProgressRing({ value, max, unit, isDone, bumpId = 0 }: P
         {ratio > 0 && <circle cx="70" cy="70" r={R} fill="none" stroke={isDone ? 'var(--c-ring-done)' : 'var(--c-ring)'} strokeWidth="14" strokeLinecap="round" strokeDasharray={`${C * ratio} ${C}`} style={{ transition: 'stroke-dasharray 0.3s' }} />}
       </svg>
       <div className="ring-text">
-        <span key={bumpId} className={`ring-value ${bumpId > 0 ? 'is-bump' : ''}`}>{twoDigits(value)}</span>
+        <span key={bumpId} className={`ring-value ${bumpId > 0 ? 'is-bump' : ''}`}>{value}</span>
         <span className="ring-max">{isDone ? '세트 완료' : max ? `/ ${max}${unit}` : unit}</span>
       </div>
     </div>
