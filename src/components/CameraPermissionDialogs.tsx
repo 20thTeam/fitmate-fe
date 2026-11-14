@@ -4,12 +4,13 @@
 import { useState } from 'react'
 import { Modal } from './ui'
 
-export function CameraIntroDialog({ onAllow, onLater }: { onAllow: () => void; onLater: () => void }) {
+// isCounting: 횟수를 세는 방인지. 공개 운동방은 캐릭터를 움직이는 데만 카메라를 쓴다 (#87)
+export function CameraIntroDialog({ onAllow, onLater, isCounting = true }: { onAllow: () => void; onLater: () => void; isCounting?: boolean }) {
   return (
     <Modal label="카메라 사용 안내">
       <h2 className="sheet-title">카메라를 허용해 주세요</h2>
       <p className="sheet-sub" style={{ lineHeight: 1.5 }}>
-        FITMATE는 카메라로 자세를 인식해서<br />제대로 한 동작만 횟수로 세요.
+        FITMATE는 카메라로 자세를 인식해서<br />{isCounting ? '제대로 한 동작만 횟수로 세요.' : '내 캐릭터가 똑같이 움직이게 해요.'}
       </p>
 
       {/* 브라우저 권한 창 모양: 어디를 눌러야 하는지 보여 준다 */}
@@ -64,12 +65,12 @@ function detectBrowser(): Browser {
   return 'chrome'
 }
 
-export function CameraBlockedDialog({ onRetry, onBack, onClose }: { onRetry: () => void; onBack: () => void; onClose: () => void }) {
+export function CameraBlockedDialog({ onRetry, onBack, onClose, isCounting = true }: { onRetry: () => void; onBack: () => void; onClose: () => void; isCounting?: boolean }) {
   const [browser, setBrowser] = useState<Browser>(detectBrowser)
   return (
     <Modal onClose={onClose} label="카메라 권한 허용 방법">
       <h2 className="sheet-title">카메라가 차단되어 있어요</h2>
-      <p className="sheet-sub" style={{ lineHeight: 1.5 }}>카메라를 허용해야 운동 횟수를 셀 수 있어요.<br />아래 순서대로 허용해 주세요.</p>
+      <p className="sheet-sub" style={{ lineHeight: 1.5 }}>{isCounting ? '카메라를 허용해야 운동 횟수를 셀 수 있어요.' : '카메라를 허용해야 내 캐릭터가 따라 움직여요.'}<br />아래 순서대로 허용해 주세요.</p>
 
       <div className="seg" role="tablist" aria-label="브라우저 선택">
         {(Object.keys(BROWSER_LABEL) as Browser[]).map((b) => (
