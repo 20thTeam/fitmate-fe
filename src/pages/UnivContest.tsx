@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { services } from '../services'
 import { useApp } from '../store/app'
-import { CONTEST_RULES, CONTEST_SCHOOLS } from '../config/contest'
+import { CONTEST_RULES, CONTEST_SCHOOLS, schoolLogo } from '../config/contest'
 import { contestStatusAt, rankContestPlayers } from '../lib/contest'
 import { createRepCounter, type CounterEvent, type PoseInput } from '../lib/pose/repCounter'
 import { useCamera, CAMERA_MESSAGE } from '../hooks/useCamera'
@@ -348,8 +348,14 @@ export default function UnivContest() {
                         aria-checked={schoolId === s.schoolId}
                         className={`btn btn-square ${schoolId === s.schoolId ? 'btn-plum' : 'btn-dark'}`}
                         onClick={() => setSchoolId(s.schoolId)}
+                        style={{ gap: 10, justifyContent: 'space-between', paddingLeft: 12, paddingRight: 16 }}
                       >
-                        {s.name}
+                        {schoolLogo(s.schoolId) && (
+                          // 어두운 버튼 위에서도 로고가 보이게 흰 바탕을 깐다
+                          <img src={schoolLogo(s.schoolId)} alt="" width={28} height={28} style={{ flex: 'none', objectFit: 'contain', background: '#fff', borderRadius: 6, padding: 2 }} />
+                        )}
+                        {/* 로고 파일이 없는 학교도 이름은 오른쪽에 붙인다 */}
+                        <span style={{ marginLeft: 'auto', textAlign: 'right' }}>{s.name}</span>
                       </button>
                     ))}
                   </div>

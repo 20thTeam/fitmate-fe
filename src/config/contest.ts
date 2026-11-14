@@ -35,3 +35,13 @@ export const CONTEST_SCHOOLS: { schoolId: string; name: string }[] = [
   { schoolId: 'ptu', name: '평택대학교' },
   { schoolId: 'hufs', name: '한국외국어대학교' },
 ]
+
+// 학교 로고. src/assets/schools/{schoolId}.svg(또는 .png·.webp·.jpg·.jpeg)를 넣으면 학교 고르기 버튼에 자동으로 붙는다.
+// 파일이 없는 학교는 이름만 보인다
+const SCHOOL_LOGO_FILES = import.meta.glob<string>('../assets/schools/*.{svg,png,webp,jpg,jpeg}', { eager: true, import: 'default' })
+
+const SCHOOL_LOGOS: Record<string, string> = Object.fromEntries(
+  Object.entries(SCHOOL_LOGO_FILES).map(([path, url]) => [path.slice(path.lastIndexOf('/') + 1, path.lastIndexOf('.')), url]),
+)
+
+export const schoolLogo = (schoolId: string): string | undefined => SCHOOL_LOGOS[schoolId]
