@@ -347,3 +347,40 @@
   .contest-pulse { animation: none; opacity: 0; }
   .contest-bar-fill, .contest-bar-block { transition: none; }
 }
+
+/* ───────── 태블릿 틀 (TabletFrame, /univ-contest/board) ───────── */
+/* 앱 전체의 최소 너비(1280px)를 풀어 가로 스크롤 없이 화면에 꽉 차게 한다 */
+html.is-tablet-frame,
+html.is-tablet-frame body,
+html.is-tablet-frame #root { min-width: 0; }
+html.is-tablet-frame body {
+  overflow: hidden;
+  /* 두 번 탭해 확대되거나 당겨서 새로고침되지 않게 한다 */
+  touch-action: manipulation;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.tablet-rotate { display: none; }
+@media (orientation: portrait) {
+  .tablet-rotate {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    background: rgba(40, 45, 70, 0.92);
+    color: #fff;
+    text-align: center;
+  }
+  .tablet-rotate p { margin: 0; font-size: 32px; font-weight: 800; }
+  .tablet-rotate .tablet-rotate-sub { font-size: 20px; font-weight: 600; color: #c9cde6; }
+  .tablet-rotate-icon { font-size: 96px; line-height: 1; animation: tablet-rotate 1.6s ease-in-out infinite; }
+}
+@keyframes tablet-rotate { 0%, 30% { transform: rotate(0); } 70%, 100% { transform: rotate(90deg); } }
+@media (prefers-reduced-motion: reduce) { .tablet-rotate-icon { animation: none; } }
