@@ -21,6 +21,7 @@ import ParticipantPanel, { FriendStrip } from '../components/room/ParticipantPan
 import { RoutineOrderPanel } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
+import VideoScreen from '../components/room/VideoScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
 import CoachBubble from '../components/room/CoachBubble'
 import MyCameraPanel from '../components/room/MyCameraPanel'
@@ -32,6 +33,7 @@ import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import groupIcon from '../assets/icons/group-public.png'
 import checkIcon from '../assets/icons/check.png'
+import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 
 // 공개 운동방 (선셋 에어로빅, F-DXORMB) · Figma '공개 운동방' 시안
 // 열려 있는 동안 자유 입장, 입장 후 각자 시작. 인원 제한 없음. 결과는 다음 회차 추천에 반영하지 않는다.
@@ -231,7 +233,14 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
   return (
     <Scene
       theme="public"
-      screen={<GuideScreen exerciseId={phase === 'play' ? SUNSET_EXERCISE.exerciseId : undefined} name={SUNSET_EXERCISE.name} idleTitle="선셋 에어로빅이 열렸어요!" idleDesc={`지금 ${room.participants.length}명 참가 중 · 준비되면 각자 시작해요`} />}
+      // 공개방은 동작 안내 카드 대신 에어로빅 영상을 계속 반복해서 틀어 둔다 (#66). 영상이 안 되면 안내 카드
+      screen={
+        <VideoScreen
+          src={sunsetVideo}
+          label="선셋 에어로빅 따라하기 영상"
+          fallback={<GuideScreen exerciseId={phase === 'play' ? SUNSET_EXERCISE.exerciseId : undefined} name={SUNSET_EXERCISE.name} idleTitle="선셋 에어로빅이 열렸어요!" idleDesc={`지금 ${room.participants.length}명 참가 중 · 준비되면 각자 시작해요`} />}
+        />
+      }
       participants={room.participants}
       selfId={profile.userId}
       maxShown={SUNSET_SHOWN}
