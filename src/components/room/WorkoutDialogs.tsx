@@ -41,16 +41,3 @@ export function LeaveDialog({ onStay, onLeave }: { onStay: () => void; onLeave: 
     </Modal>
   )
 }
-
-export function GuideDialog({ name, guide, onClose }: { name: string; guide: string; onClose: () => void }) {
-  return (
-    <Modal onClose={onClose} label="자세 가이드">
-      <h2 className="sheet-title" style={{ marginTop: 12 }}>{name} 자세 가이드</h2>
-      <p className="sheet-sub" style={{ fontSize: 18, lineHeight: 1.6, color: '#554b4d' }}>{guide}</p>
-      <p className="sheet-sub" style={{ fontSize: 13 }}>가운데 스크린의 가이드 시범은 내 유효 횟수에 포함되지 않아요.</p>
-      <div className="sheet-actions">
-        <button className="btn btn-sheet-primary" onClick={onClose}>확인</button>
-      </div>
-    </Modal>
-  )
-}

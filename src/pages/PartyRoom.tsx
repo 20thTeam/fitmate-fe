@@ -4,7 +4,7 @@ import { services } from '../services'
 import { useApp } from '../store/app'
 import { goalLabel, type FriendRoom, type Participant, type Profile, type Routine, type WorkoutSession } from '../types/domain'
 import { PARTY_MAX, PROVISIONAL_REST_SECONDS, provisionalDifficulty } from '../config/provisional'
-import { guideOf, ROUTINE_THUMB } from '../config/exercises'
+import { ROUTINE_THUMB } from '../config/exercises'
 import { amountLabel } from '../lib/format'
 import { estimateKcal, estimateMinutes } from '../lib/estimate'
 import { useRoom } from '../hooks/useRoom'
@@ -26,7 +26,7 @@ import StepDoneCard from '../components/room/StepDoneCard'
 import MyCameraPanel from '../components/room/MyCameraPanel'
 import VoiceToggle from '../components/room/VoiceToggle'
 import InviteModal from '../components/room/InviteModal'
-import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
+import { CameraLostDialog, EndConfirmDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
 import ConnectionBanner from '../components/room/ConnectionBanner'
 import RoomGate, { type RoomActions } from '../components/room/RoomGate'
@@ -35,7 +35,6 @@ import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import { canUseWebGL } from '../lib/webgl'
 import groupIcon from '../assets/icons/group.png'
 import userAddIcon from '../assets/icons/user-add.png'
-import checkIcon from '../assets/icons/check.png'
 
 // 친구 운동방 · Figma '친구 운동방' → '카메라 확인' → '운동방에 입장하는 중' → '운동 진행'
 // F-STRTHT, F-ERSUOK, F-WJAOCO, F-WGMOYG, F-ZGIFAX, F-XNIIJM, F-WLBEFJ, F-EUQUBE, F-JENTLD, F-HEIEZC, F-SZCKIV
@@ -104,7 +103,6 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
   const [phase, setPhase] = useState<Phase>('lobby')
   const [enterStartedAt, setEnterStartedAt] = useState(0)
   const [isInviteOpen, setIsInviteOpen] = useState(false)
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false)
   const [restStartedAt, setRestStartedAt] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
@@ -348,7 +346,7 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
   const hasCoach = !!coachExerciseId && canUseWebGL()
 
   const nextLabel = !isLastSet ? '다음 세트' : isLast ? '운동 마치기' : '다음 운동'
-  const isKeyEnabled = !isEndConfirmOpen && !isGuideOpen && !isInviteOpen && !isCameraBroken && blocker.state !== 'blocked'
+  const isKeyEnabled = !isEndConfirmOpen && !isInviteOpen && !isCameraBroken && blocker.state !== 'blocked'
   const doneCard = phase === 'play' && isSetDone ? (
     <StepDoneCard
       title={isLastSet ? `${item.name} 완료!` : `세트 ${workout.setNo} 완료!`}
@@ -447,7 +445,6 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
               friendsTitle={friendsTitle}
               friends={friendStrip}
               controls={<>
-                <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={18} height={18} />자세 가이드</button>
                 {workout.isRunning
                   ? <button className="btn btn-dark btn-sm" onClick={workout.pause}>일시정지</button>
                   : <button className="btn btn-dark btn-sm" disabled={!camera.isOn} onClick={workout.start}>다시 시작</button>}
@@ -488,7 +485,6 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
       )}
 
       {isInviteOpen && <InviteModal roomId={friendRoom.roomId} onClose={() => setIsInviteOpen(false)} />}
-      {isGuideOpen && <GuideDialog name={item.name} guide={guideOf(item.exerciseId)} onClose={() => setIsGuideOpen(false)} />}
 
       {isCameraBroken && !isEndConfirmOpen && (
         <CameraLostDialog message={CAMERA_MESSAGE[camera.state]} onEnd={() => setIsEndConfirmOpen(true)} onRetry={() => camera.start(camera.deviceId || undefined)} />

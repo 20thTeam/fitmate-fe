@@ -4,7 +4,7 @@ import { services } from '../services'
 import { SUNSET_ROOM_ID, useApp } from '../store/app'
 import type { Participant, Profile, PublicPartySchedule, WorkoutSession } from '../types/domain'
 import { SUNSET_EXERCISE } from '../config/provisional'
-import { guideOf, ROUTINE_THUMB } from '../config/exercises'
+import { ROUTINE_THUMB } from '../config/exercises'
 import { clockLabel } from '../lib/format'
 import { isProvisionalSchedule, sunsetHourLabel } from '../lib/sunset'
 import { useSunsetStatus } from '../hooks/useSunsetStatus'
@@ -26,13 +26,12 @@ import WorkoutHud from '../components/room/WorkoutHud'
 import CoachBubble from '../components/room/CoachBubble'
 import MyCameraPanel from '../components/room/MyCameraPanel'
 import VoiceToggle from '../components/room/VoiceToggle'
-import { CameraLostDialog, EndConfirmDialog, GuideDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
+import { CameraLostDialog, EndConfirmDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
 import CameraCheck from '../components/CameraCheck'
 import ConnectionBanner from '../components/room/ConnectionBanner'
 import EnterLoading from '../components/EnterLoading'
 import { CenterMessage, Logo, ProvisionalBadge } from '../components/ui'
 import groupIcon from '../assets/icons/group-public.png'
-import checkIcon from '../assets/icons/check.png'
 import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 
 // 공개 운동방 (선셋 에어로빅, F-DXORMB) · Figma '공개 운동방' 시안
@@ -99,7 +98,6 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
 
   const [phase, setPhase] = useState<Phase>('lobby')
   const [enterStartedAt, setEnterStartedAt] = useState(0)
-  const [isGuideOpen, setIsGuideOpen] = useState(false)
   const [isEndConfirmOpen, setIsEndConfirmOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [hasSaveError, setHasSaveError] = useState(false)
@@ -304,7 +302,6 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
               />
             }
             controls={<>
-              <button className="btn btn-dark btn-sm" onClick={() => setIsGuideOpen(true)}><img src={checkIcon} alt="" width={18} height={18} />자세 가이드</button>
               {workout.isRunning
                 ? <button className="btn btn-dark btn-sm" onClick={workout.pause}>일시정지</button>
                 : <button className="btn btn-dark btn-sm" disabled={!camera.isOn} onClick={workout.start}>다시 시작</button>}
@@ -316,8 +313,6 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
           />
         </>
       )}
-
-      {isGuideOpen && <GuideDialog name={SUNSET_EXERCISE.name} guide={guideOf(SUNSET_EXERCISE.exerciseId)} onClose={() => setIsGuideOpen(false)} />}
 
       {isCameraBroken && !isEndConfirmOpen && (
         <CameraLostDialog message={CAMERA_MESSAGE[camera.state]} onEnd={() => setIsEndConfirmOpen(true)} onRetry={() => camera.start(camera.deviceId || undefined)} />
