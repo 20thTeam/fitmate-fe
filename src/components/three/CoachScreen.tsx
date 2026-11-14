@@ -71,8 +71,8 @@ function CoachClip({ clipName }: { clipName: string }) {
 
 /** Mixamo 동작이 없는 운동은 코드로 만든 관절 좌표를 뼈대에 입힌다 */
 function CoachRigged({ exerciseId }: { exerciseId: string }) {
-  // 사람 비율 모델이라 머리를 줄이지 않는다
-  const { model, rig } = useCharacterModel(coachModelUrl, { isSmoothed: false, headScale: 1 })
+  // 사람 비율 모델이라 머리를 줄이거나 다리를 늘리지 않는다
+  const { model, rig } = useCharacterModel(coachModelUrl, { isSmoothed: false, headScale: 1, legScale: 1 })
   const groupRef = useRef<Group>(null)
   // 매 프레임 고쳐 쓰는 관절 좌표 칸 (새 배열을 만들지 않는다)
   const pose = useMemo(() => new Float32Array(POSE_LENGTH), [])
