@@ -16,6 +16,7 @@ import type { AdminPublicParty, AdminService, FriendRoomService, ProfileService,
 import { buildFirstRoutine, buildNextRoutine } from '../../lib/recommend'
 import { clearAll, readJson, uid, writeJson } from '../local/storage'
 import { localRealtime } from '../local/realtime'
+import { clearLocalContest } from '../local/contest'
 import { createLastRoomStore } from '../local/rooms'
 import { DEMO_ROOM_ID, SUNSET_ROOM_ID } from '../../store/app'
 import { PARTY_MAX, SUNSET_EXERCISE } from '../../config/provisional'
@@ -597,6 +598,20 @@ const admin: AdminService = {
   },
   async clearDevice() {
     clearAll()
+  },
+  async resetContest(adminKey) {
+    // 서버에 챌린지 API가 없어 이 브라우저에 저장 중이면 여기만 지운다
+    if (httpContest.storage() === 'device') {
+      clearLocalContest()
+      return 'done'
+    }
+    try {
+      await request<unknown>('/api/admin/univ-contest/reset', { method: 'POST', adminKey })
+      return 'done'
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 404) return 'missing'
+      throw e
+    }
   },
 }
 

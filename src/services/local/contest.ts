@@ -28,6 +28,11 @@ function updateGame(gameId: string, fn: (g: StoredGame) => StoredGame): ContestG
   return withStatus(games[i])
 }
 
+/** 이 브라우저에 보관한 챌린지 판을 모두 지운다 (운영 화면의 기록 초기화) */
+export function clearLocalContest() {
+  writeJson(KEY, [])
+}
+
 export const localContest: ContestService = {
   storage: () => 'device',
   // 같은 브라우저 탭끼리만 연결된다 (BroadcastChannel)

@@ -158,6 +158,11 @@ export interface AdminService {
   setPublicPartyMode(mode: PublicPartyMode, adminKey: string): Promise<AdminPublicParty>
   /** 공개 운동방의 매일 운영 시각을 바꾼다 (#41) */
   setPublicPartySchedule(schedule: PublicPartySchedule, adminKey: string): Promise<AdminPublicParty>
+  /**
+   * 학교 대항 챌린지의 판·참가자·결과를 모두 지운다. 진행 중인 판도 사라진다.
+   * 'missing'이면 서버에 이 운영 API가 아직 없어서 아무것도 지우지 않았다
+   */
+  resetContest(adminKey: string): Promise<'done' | 'missing'>
 }
 
 /**
