@@ -709,6 +709,27 @@ button.check-item:hover { color: #fff; }
   .step-done.is-pop { animation: none; }
 }
 
+/* 운동 사이 휴식 카드: 코치 말풍선 자리(스크린 위)에 한 줄로. 다음 운동 시범이 나오는 스크린을 가리지 않는다 */
+.rest-card {
+  pointer-events: auto; display: flex; align-items: center; gap: 28px;
+  padding: 10px 32px; white-space: nowrap;
+}
+.rest-card.is-pop { animation: coach-pop 0.28s ease-out; }
+.rest-card-title { font-size: 30px; font-weight: 800; color: #fff; }
+.rest-card-time { font-size: 28px; font-weight: 700; color: #f1ead8; }
+.rest-card-time strong {
+  display: inline-block; width: 2ch; margin-right: 4px; text-align: right;
+  font-size: 72px; font-weight: 800; line-height: 1; color: #fff; font-variant-numeric: tabular-nums; vertical-align: -0.12em;
+}
+.rest-card-time strong.is-ending { color: var(--c-ring); animation: rest-tick 0.5s ease-out; }
+@keyframes rest-tick { from { transform: scale(1.35); } }
+.rest-card-next { display: flex; align-items: baseline; gap: 10px; padding-left: 28px; border-left: 2px solid rgba(255, 255, 255, 0.25); font-size: 24px; font-weight: 700; color: var(--c-text-soft); }
+.rest-card-next b { font-size: 32px; font-weight: 800; color: #fff; }
+.rest-card-next small { font-size: 22px; font-weight: 700; color: #f1ead8; }
+@media (prefers-reduced-motion: reduce) {
+  .rest-card.is-pop, .rest-card-time strong.is-ending { animation: none; }
+}
+
 /* ───────── 횟수가 올라갈 때 효과 (2m 거리에서도 보이게) ───────── */
 .ring-value.is-bump { animation: ring-bump 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
 @keyframes ring-bump { 0% { transform: scale(1.5); color: #fff; } 100% { transform: scale(1); } }

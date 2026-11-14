@@ -21,6 +21,7 @@ import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
 import WorkoutHud from '../components/room/WorkoutHud'
 import CoachBubble from '../components/room/CoachBubble'
+import RestCard from '../components/room/RestCard'
 import StepDoneCard from '../components/room/StepDoneCard'
 import MyCameraPanel from '../components/room/MyCameraPanel'
 import InviteModal from '../components/room/InviteModal'
@@ -367,6 +368,8 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
       isKeyEnabled={isKeyEnabled}
       autoSeconds={PROVISIONAL_AUTO_NEXT_SECONDS}
     />
+  ) : phase === 'rest' && next ? (
+    <RestCard leftSec={restLeftSec} nextName={next.name} nextAmount={amountLabel(next)} />
   ) : null
 
   return (
@@ -430,7 +433,7 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
             isCameraOn={camera.isOn}
             overlay={phase === 'play' && <canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
           />
-          {/* 세트를 채웠거나 휴식이 끝나면 눈높이에 다음 단계 카드를 띄운다. 그동안 코치 말풍선은 쉰다 */}
+          {/* 세트를 채웠으면 다음 단계 카드, 휴식 중이면 휴식 카드를 눈높이에 띄운다. 그동안 코치 말풍선은 쉰다 */}
           {doneCard ?? (phase === 'play' && (
             <CoachBubble notes={record.postureNotes} {...counting} isRunning={workout.isRunning} onRetry={counting.retry} />
           ))}
@@ -471,7 +474,7 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
               ring={{ value: restLeftSec, max: PROVISIONAL_REST_SECONDS, unit: '초' }}
               friendsTitle={friendsTitle}
               friends={friendStrip}
-              controls={<span className="t-small t-soft">시간이 지나도 자동으로 넘어가지 않아요</span>}
+              controls={<span className="t-small t-soft">휴식이 끝나면 {PROVISIONAL_AUTO_NEXT_SECONDS}초 뒤 자동으로 시작해요</span>}
               action={
                 <button className="btn btn-brown hud-action" disabled={!camera.isOn} onClick={handleStartNextExercise}>
                   {next.name} 시작<span aria-hidden>&gt;</span>
