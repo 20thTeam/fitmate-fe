@@ -550,7 +550,7 @@ button.check-item:hover { color: #fff; }
 
 /* ───────── 운동 중 화면 (2m 거리에서 보이게 크게) ───────── */
 .hud {
-  position: absolute; left: 16px; right: 16px; bottom: 16px; height: 196px;
+  position: absolute; left: 16px; right: 16px; bottom: 16px; height: 224px;
   display: flex; align-items: stretch; gap: 10px;
 }
 .hud-panel { padding: 16px 20px; }
@@ -560,9 +560,10 @@ button.check-item:hover { color: #fff; }
 .hud-title { font-size: 18px; font-weight: 700; color: var(--c-text-soft); }
 .hud .btn-sm { min-height: 44px; font-size: 17px; padding: 0 18px; }
 .hud .t-small { font-size: 15px; }
-.hud .ring { width: 164px; height: 164px; }
-.hud .ring-value { font-size: 52px; }
-.hud .ring-max { font-size: 19px; font-weight: 700; }
+.hud .ring { width: 192px; height: 192px; }
+/* 횟수는 2m 거리에서 가장 먼저 읽혀야 해서 HUD에서 제일 크게 쓴다 */
+.hud .ring-value { font-size: 88px; }
+.hud .ring-max { font-size: 24px; font-weight: 700; }
 .ring.is-done .ring-value, .ring.is-done .ring-max { color: var(--c-ring-done); }
 .hud-action { min-height: 92px; font-size: 28px; font-weight: 800; border-radius: var(--radius); justify-content: space-between; padding: 0 26px; }
 @keyframes hud-ready { 50% { box-shadow: 0 0 0 10px rgba(127, 211, 107, 0.12); } }
