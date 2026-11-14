@@ -4,6 +4,7 @@
 import type { ReactNode } from 'react'
 import { photoOf } from '../../config/exercises'
 import ProgressRing from './ProgressRing'
+import { useCountBump } from '../../hooks/useCountBump'
 import starIcon from '../../assets/icons/star.png'
 
 interface Props {
@@ -36,9 +37,24 @@ function Photo({ exerciseId, name }: { exerciseId: string; name: string }) {
   )
 }
 
+/** 남은 횟수가 이만큼 이하면 '+1' 아래에 남은 횟수를 같이 보여준다 */
+const LAST_REPS = 3
+
 export default function WorkoutHud({ exerciseId, name, meta, ring, controls, friendsTitle, friends, action, subAction, devTools }: Props) {
+  // 운동이 바뀌거나 휴식 타이머로 넘어가면 '올라갔다'로 보지 않는다
+  const bump = useCountBump(ring.value, `${exerciseId}|${name}|${ring.unit}`)
+  const left = ring.max ? ring.max - ring.value : null
+  // 초 단위(플랭크)는 매초 올라가서 가운데 '+1'은 띄우지 않고 링만 반응한다
+  const isRepCount = ring.unit === '회'
   return (
     <div className="hud">
+      {/* 눈높이(캐릭터 머리 위)에 잠깐 떠올랐다 사라지는 '+1' */}
+      {bump.isFresh && isRepCount && (
+        <div key={bump.id} className={`count-pop ${ring.isDone ? 'is-done' : ''}`} aria-hidden>
+          <strong>+{bump.delta}</strong>
+          {ring.isDone ? <span>목표 달성!</span> : left != null && left > 0 && left <= LAST_REPS && <span>{left}{ring.unit} 남았어요</span>}
+        </div>
+      )}
       {devTools && <div className="row" style={{ position: 'absolute', left: 4, bottom: '100%', marginBottom: 8, gap: 6 }}>{devTools}</div>}
       {/* 지금 운동 */}
       <section className="glass is-lined hud-panel row" style={{ flex: 1, minWidth: 0, gap: 22 }} aria-label="지금 하는 운동">
@@ -48,7 +64,7 @@ export default function WorkoutHud({ exerciseId, name, meta, ring, controls, fri
           {meta && <span className="hud-meta">{meta}</span>}
           <div className="row wrap" style={{ gap: 8, marginTop: 6 }}>{controls}</div>
         </div>
-        <ProgressRing value={ring.value} max={ring.max} unit={ring.unit} isDone={ring.isDone} />
+        <ProgressRing value={ring.value} max={ring.max} unit={ring.unit} isDone={ring.isDone} bumpId={bump.isFresh ? bump.id : 0} />
       </section>
 
       {/* 친구 현황 (F-WJAOCO) */}

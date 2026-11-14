@@ -676,3 +676,52 @@ button.check-item:hover { color: #fff; }
 @media (prefers-reduced-motion: reduce) {
   .step-done.is-pop, .step-done-action { animation: none; }
 }
+
+/* ───────── 횟수가 올라갈 때 효과 (2m 거리에서도 보이게) ───────── */
+.ring-value.is-bump { animation: ring-bump 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.4); }
+@keyframes ring-bump { 0% { transform: scale(1.5); color: #fff; } 100% { transform: scale(1); } }
+/* 링 뒤에서 번쩍 퍼지는 빛 */
+.ring-flash {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
+  box-shadow: 0 0 0 0 rgba(232, 196, 106, 0.9);
+  animation: ring-flash 0.6s ease-out forwards;
+}
+.ring.is-done .ring-flash { box-shadow: 0 0 0 0 rgba(127, 211, 107, 0.9); }
+@keyframes ring-flash { to { box-shadow: 0 0 0 26px rgba(232, 196, 106, 0); } }
+/* 세트 완료: 링 둘레로 조각이 튄다 (한 번만) */
+.ring-burst { position: absolute; inset: 0; pointer-events: none; }
+.ring-burst i {
+  position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px; border-radius: 4px;
+  background: var(--c-ring-done);
+  animation: ring-burst 1s ease-out forwards;
+}
+.ring-burst i:nth-child(3n) { background: var(--c-ring); }
+.ring-burst i:nth-child(3n + 1) { background: #fff; }
+/* 링 바깥(반지름 약 80px)에서 출발해 밖으로 퍼진다 */
+@keyframes ring-burst {
+  0% { transform: rotate(var(--a)) translateY(-70px) scale(0.6); opacity: 1; }
+  60% { opacity: 1; }
+  100% { transform: rotate(var(--a)) translateY(-150px) scale(1); opacity: 0; }
+}
+/* 캐릭터 머리 위 '+1' */
+.count-pop {
+  position: absolute; left: 50%; bottom: calc(100% + 250px); z-index: 6; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  transform: translateX(-50%); animation: count-pop 0.9s ease-out forwards;
+  text-shadow: 0 3px 12px rgba(0, 0, 0, 0.45);
+}
+/* 밝은 스크린 위에서도 보이게 바깥쪽에 진한 테두리를 두른다 */
+.count-pop strong { font-size: 104px; font-weight: 900; line-height: 1; color: #ffd45c; -webkit-text-stroke: 10px rgba(42, 30, 52, 0.9); paint-order: stroke fill; }
+.count-pop span { font-size: 28px; font-weight: 800; color: #fff; padding: 4px 16px; border-radius: var(--radius-pill); background: rgba(36, 38, 50, 0.75); }
+.count-pop.is-done strong { color: #8be276; }
+@keyframes count-pop {
+  0% { opacity: 0; transform: translate(-50%, 30px) scale(0.6); }
+  20% { opacity: 1; transform: translate(-50%, 0) scale(1.1); }
+  70% { opacity: 1; transform: translate(-50%, -20px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -60px) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ring-value.is-bump, .ring-flash, .ring-burst, .count-pop { animation: none; }
+  .ring-burst, .ring-flash { display: none; }
+  .count-pop { opacity: 0; }
+}
