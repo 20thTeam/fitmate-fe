@@ -83,6 +83,15 @@ export default function Result() {
                 const goal = it ? (isTimed ? (it.targetSeconds ?? 0) : (it.targetReps ?? 0)) * it.sets : 0
                 // 자세 인식이 안 된 운동은 0회로 보이지 않게 '측정 못 함'으로 둔다
                 const isNotMeasured = r.measurementStatus === 'NOT_MEASURED'
+                // 공개 운동방은 횟수를 세지 않는 자유 운동이라 참여 여부만 보여준다
+                if (isSunset) {
+                  return (
+                    <li key={r.exerciseId} className="row between" style={{ padding: '12px 0' }}>
+                      <strong style={{ fontSize: 20 }}>{r.name}</strong>
+                      <span className="t-soft" style={{ fontWeight: 700 }}>참여 완료 · 횟수는 세지 않아요</span>
+                    </li>
+                  )
+                }
                 return (
                   <li key={r.exerciseId} className="col" style={{ gap: 8, padding: '12px 0' }}>
                     <div className="row between">
