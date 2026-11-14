@@ -316,7 +316,7 @@ export default function UnivContest() {
   return (
     <Backdrop theme="public" isDim>
       <Logo isLight />
-      <div className="backdrop-body" style={{ alignItems: 'center', gap: 24, paddingTop: 72 }}>
+      <div className="backdrop-body is-center" style={{ gap: 24 }}>
         <header className="col center" style={{ gap: 8 }}>
           <h1 className="t-display">학교 대항 스쿼트 20초 챌린지</h1>
           <div className="row center wrap" style={{ gap: 8 }}>
