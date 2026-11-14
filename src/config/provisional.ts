@@ -78,8 +78,14 @@ export const PROVISIONAL_CAMERA_CHECK = {
   minBrightness: 60,
 }
 
-/** 미정: 운동 간 휴식 길이. 와이어프레임 v3 예시(00:30)를 임시로 사용. 자동 전환은 하지 않는다. */
+/** 미정: 운동 간 휴식 길이. 와이어프레임 v3 예시(00:30)를 임시로 사용. 휴식이 끝나면 완료 카드의 자동 넘어가기를 따른다. */
 export const PROVISIONAL_REST_SECONDS = 30
+
+/**
+ * 미정: 세트 완료·휴식 끝 카드가 뜬 뒤 자동으로 다음 단계로 넘어가기까지의 초 (#70).
+ * 2m 떨어져 운동하는데 넘어갈 때마다 노트북까지 와야 해서 넣었다. F-SZCKIV '직접 누른다'를 바꾸는 거라 PM 확인 필요.
+ */
+export const PROVISIONAL_AUTO_NEXT_SECONDS = 10
 
 /** 미정: 선셋 운영 (F-DXORMB). 권장안 = 매일 · 한국 시간. 종료 시각은 미정이라 임시 1시간. */
 export const PROVISIONAL_SUNSET = { openHourKst: 22, durationMin: 60 }
