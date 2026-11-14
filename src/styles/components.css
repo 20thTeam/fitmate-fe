@@ -591,8 +591,6 @@ button.check-item:hover { color: #fff; }
 .step-sets i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.6); }
 .step-sets i.is-done { background: var(--c-ring); border-color: var(--c-ring); }
 .step-sets i.is-now { border-color: var(--c-ring); box-shadow: 0 0 0 3px rgba(232, 196, 106, 0.3); }
-.voice-toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border-radius: var(--radius-pill); background: rgba(255, 255, 255, 0.12); font-size: 16px; font-weight: 700; color: #fff; white-space: nowrap; }
-.voice-toggle.is-on { background: var(--c-ring); color: #2a2430; }
 
 /* 오른쪽 위 내 카메라 */
 .my-camera { position: absolute; right: 20px; top: 24px; width: 300px; gap: 8px; padding: 10px; z-index: 3; }
