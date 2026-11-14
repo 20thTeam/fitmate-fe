@@ -641,6 +641,26 @@ button.check-item:hover { color: #fff; }
   .coach-bubble.is-pop { animation: none; }
 }
 
+/* ───────── 학교 대항 챌린지: 학교 고르기 버튼 (/univ-contest) ─────────
+   로고 파일이 흰 바탕이라 버튼도 흰 바탕으로 둬서 로고 사각형이 드러나지 않게 한다 */
+.school-pick {
+  justify-content: space-between;
+  padding: 0 16px 0 10px;
+  border-radius: var(--radius-sm);
+  background: #fff;
+  color: var(--c-sheet-label);
+  border: 3px solid transparent;
+  font-size: 17px;
+}
+.school-pick.is-selected {
+  color: var(--c-sheet-title);
+  border-color: var(--c-row-active-num);
+  box-shadow: 0 0 0 4px rgba(179, 88, 177, 0.45);
+}
+/* 고르지 않은 학교는 살짝 흐리게 해서 고른 학교가 눈에 띄게 한다 */
+.school-pick:not(.is-selected) { opacity: 0.72; }
+.school-pick:not(.is-selected):hover { opacity: 0.9; }
+
 /* ───────── 학교 대항 챌린지: 남은 10초·5초 긴박감 (/univ-contest) ───────── */
 /* 화면 가장자리 빛. HUD 맨 아래층에 깔고 클릭은 막지 않는다 */
 .scene-hud > .contest-vignette { position: absolute; inset: 0; pointer-events: none; }
