@@ -14,6 +14,7 @@ import Admin from './pages/Admin'
 import UnivContest from './pages/UnivContest'
 import UnivContestBoard from './pages/UnivContestBoard'
 import AdminGate from './components/AdminGate'
+import TabletFrame from './components/TabletFrame'
 
 /** 임시 프로필이 없으면 프로필 설정으로 보낸다. */
 function RequireProfile({ children }: { children: ReactNode }) {
@@ -59,7 +60,7 @@ const router = createBrowserRouter([
   { path: '/admin', element: <Admin /> },
   // 시연 당일 학교 대항 스쿼트 챌린지. 기획에 없는 화면이고, 프로필 없이 누구나 열 수 있다
   { path: '/univ-contest', element: <UnivContest /> },
-  { path: '/univ-contest/board', element: <AdminGate scope="device" title="순위 전광판"><UnivContestBoard /></AdminGate> },
+  { path: '/univ-contest/board', element: <TabletFrame><AdminGate scope="device" title="순위 전광판"><UnivContestBoard /></AdminGate></TabletFrame> },
   { path: '*', element: <Navigate to="/" replace /> },
 ])
 
