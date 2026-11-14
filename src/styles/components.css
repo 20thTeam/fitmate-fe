@@ -674,27 +674,30 @@ button.check-item:hover { color: #fff; }
   .contest-vignette.is-final, .contest-tick { animation: none; }
 }
 
-/* 세트 완료·휴식 끝 카드 (코치 말풍선 자리, 눈높이) */
+/* 세트 완료·휴식 끝 카드 (코치 말풍선 자리, 눈높이). 하단 패널과 같은 유리 패널(.glass)로 맞춘다.
+   2m 거리에서 보이게 크게 쓰고, 남은 초가 10 → 9로 바뀌어도 카드 폭이 흔들리지 않게 폭을 고정한다 (#70) */
+/* 위쪽 운동 순서 바(아래 끝 약 112px)와 하단 패널(.hud, 바닥에서 16 + 224px) 사이 한가운데에 둔다 */
+.step-done-wrap {
+  position: absolute; left: 0; right: 0; top: 112px; bottom: 240px; z-index: 5;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+}
 .step-done {
-  pointer-events: auto; display: flex; flex-direction: column; gap: 10px;
-  padding: 14px 18px 12px; border-radius: 22px;
-  background: rgba(36, 38, 50, 0.92); border: 2px solid #a9ea9b;
-  box-shadow: 0 0 0 6px rgba(127, 211, 107, 0.25), 0 10px 30px rgba(0, 0, 0, 0.3);
+  pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 18px;
+  width: 520px; padding: 28px 40px; text-align: center;
 }
 .step-done.is-pop { animation: coach-pop 0.28s ease-out; }
-.step-done-title { display: flex; align-items: center; gap: 12px; font-size: 30px; font-weight: 800; color: #fff; white-space: nowrap; }
-.step-done-title .coach-bubble-icon { background: var(--c-good); }
-.step-done-title small { font-size: 18px; font-weight: 700; color: var(--c-ring-done); }
-.step-done-action {
-  min-height: 72px; min-width: 260px; padding: 0 28px; justify-content: space-between;
-  font-size: 30px; font-weight: 800; border-radius: var(--radius);
-  background: linear-gradient(90deg, #4f9a45, #7fd36b); animation: hud-ready 1.4s ease-in-out infinite;
+.step-done-title { display: flex; align-items: baseline; gap: 12px; font-size: 38px; font-weight: 800; color: #fff; white-space: nowrap; }
+.step-done-title small { font-size: 26px; font-weight: 700; color: #f1ead8; }
+.step-done-count { font-size: 30px; font-weight: 700; color: #f1ead8; white-space: nowrap; }
+.step-done-count strong {
+  display: inline-block; width: 2ch; text-align: center;
+  font-size: 104px; font-weight: 800; line-height: 1; color: #fff; margin: 0 6px; font-variant-numeric: tabular-nums; vertical-align: -0.14em;
 }
-.step-done-hint { font-size: 16px; color: var(--c-text-soft); }
-.step-done-end { font-size: 18px; font-weight: 700; color: #fff; padding: 6px 14px; border-radius: var(--radius-pill); background: rgba(191, 161, 163, 0.35); }
-.step-done-end:hover { background: rgba(191, 161, 163, 0.6); }
+.step-done-rest { min-width: 200px; min-height: 60px; font-size: 24px; }
+.step-done-action { min-height: 88px; min-width: 340px; padding: 0 32px; justify-content: space-between; font-size: 34px; font-weight: 800; }
+.step-done-hint { font-size: 20px; color: var(--c-text-soft); }
 @media (prefers-reduced-motion: reduce) {
-  .step-done.is-pop, .step-done-action { animation: none; }
+  .step-done.is-pop { animation: none; }
 }
 
 /* ───────── 횟수가 올라갈 때 효과 (2m 거리에서도 보이게) ───────── */

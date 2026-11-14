@@ -3,7 +3,7 @@ import { useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { services } from '../services'
 import { useApp } from '../store/app'
 import { goalLabel, type FriendRoom, type Participant, type Profile, type Routine, type WorkoutSession } from '../types/domain'
-import { PARTY_MAX, PROVISIONAL_REST_SECONDS, provisionalDifficulty } from '../config/provisional'
+import { PARTY_MAX, PROVISIONAL_AUTO_NEXT_SECONDS, PROVISIONAL_REST_SECONDS, provisionalDifficulty } from '../config/provisional'
 import { guideOf, ROUTINE_THUMB } from '../config/exercises'
 import { amountLabel } from '../lib/format'
 import { estimateKcal, estimateMinutes } from '../lib/estimate'
@@ -351,23 +351,26 @@ function Room({ routine, profile, friendRoom, roomActions }: { routine: Routine;
   const isKeyEnabled = !isEndConfirmOpen && !isGuideOpen && !isInviteOpen && !isCameraBroken && blocker.state !== 'blocked'
   const doneCard = phase === 'play' && isSetDone ? (
     <StepDoneCard
+      key={`set-${workout.index}-${workout.setNo}`}
       title={isLastSet ? `${item.name} 완료!` : `세트 ${workout.setNo} 완료!`}
       sub={`${workout.setProgress} / ${setTarget}${item.targetReps ? '회' : '초'}`}
       actionLabel={nextLabel}
       onAction={handleNext}
-      onEnd={() => setIsEndConfirmOpen(true)}
       isDisabled={isSaving}
       isKeyEnabled={isKeyEnabled}
+      // 루틴의 마지막 세트는 결과 저장으로 이어지므로 직접 눌러서 끝내게 한다
+      autoSeconds={isLast && isLastSet ? undefined : PROVISIONAL_AUTO_NEXT_SECONDS}
     />
   ) : phase === 'rest' && next && restLeftSec === 0 ? (
     <StepDoneCard
+      key={`rest-${workout.index}`}
       title="휴식 끝!"
       sub={`다음: ${next.name}`}
       actionLabel={`${next.name} 시작`}
       onAction={handleStartNextExercise}
-      onEnd={() => setIsEndConfirmOpen(true)}
       isDisabled={!camera.isOn}
       isKeyEnabled={isKeyEnabled}
+      autoSeconds={PROVISIONAL_AUTO_NEXT_SECONDS}
     />
   ) : null
 
