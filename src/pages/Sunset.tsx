@@ -35,8 +35,6 @@ import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 /** 공개 운동방 목록에 그릴 최대 인원 (F-DXORMB 권장안: 일부만 표시 + 실제 인원은 따로) */
 const SUNSET_SHOWN = 5
 const ENTER_STEP_MS = 400
-/** 운동 중 참가자 목록 위치. 오른쪽 위 내 카메라 칸(.my-camera) 바로 아래 */
-const SUNSET_PANEL_TOP = 316
 // 횟수를 세지 않으니 관절이 보이기만 하면 인식 중으로 본다
 const trackOnly = () => true
 
@@ -221,6 +219,8 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
       maxShown={SUNSET_SHOWN}
       onCheer={handleCheer}
       view={phase === 'play' ? 'front' : 'tour'}
+      // 운동 중 하단 배너가 없어 캐릭터를 크게 보여 준다. 다리 움직임이 보이게 (#91)
+      hasBottomPanel={false}
     >
       <Logo />
       <ConnectionBanner state={room.connection} onReconnect={room.reconnect} />
@@ -252,31 +252,34 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
 
       {phase === 'play' && (
         <>
-          {/* 내가 카메라에 어떻게 찍히는지 보여 준다 (#89). 참가자 목록은 그 아래에 둔다 */}
+          {/* 내가 카메라에 어떻게 찍히는지 보여 준다 (#89) */}
           <MyCameraPanel
             stream={camera.stream}
             isCameraOn={camera.isOn}
             overlay={<canvas ref={poseCanvasRef} className="pose-overlay" aria-hidden />}
           />
-          <div style={{ position: 'absolute', right: 20, top: SUNSET_PANEL_TOP, width: 300 }}>{panel}</div>
-          <div className="col center" style={{ position: 'absolute', left: 0, right: 0, bottom: 48, gap: 10, pointerEvents: 'none' }}>
-            {isClosed && <span className="chip chip-ghost">운영은 끝났지만 지금 운동은 마칠 수 있어요</span>}
+          {/* 캐릭터를 크게 세워서(#91) 오른쪽 아래는 5명째 캐릭터 자리다. 참가자 목록은 왼쪽 위에 둔다 */}
+          <div style={{ position: 'absolute', left: 20, top: 96, width: 300 }}>{panel}</div>
+          {/* 안내는 카메라 칸 바로 아래에 둔다. 아래쪽은 캐릭터가 서는 자리다 (#91) */}
+          <div className="col" style={{ position: 'absolute', right: 20, top: 296, width: 300, gap: 8, alignItems: 'flex-end' }}>
+            {isClosed && <span className="chip chip-ghost" style={{ whiteSpace: 'normal' }}>운영은 끝났지만 지금 운동은 마칠 수 있어요</span>}
             {/* 횟수를 세지 않아 운동을 막지 않고, 캐릭터가 멈춘 이유와 다시 켜는 버튼만 알린다 */}
             {isCameraBroken ? (
-              <span className="chip chip-ghost row" style={{ gap: 8, pointerEvents: 'auto' }}>
+              <span className="glass is-lined col t-sm" style={{ width: '100%', gap: 8, alignItems: 'flex-end', padding: '10px 12px', color: '#fff' }}>
                 내 캐릭터가 멈춰 있어요. {CAMERA_MESSAGE[camera.state]}
                 <button className="btn btn-dark btn-sm" onClick={() => camera.start(camera.deviceId || undefined)}>카메라 다시 켜기</button>
               </span>
             ) : pose.modelState === 'error' && (
-              <span className="chip chip-ghost row" style={{ gap: 8, pointerEvents: 'auto' }}>
+              <span className="glass is-lined col t-sm" style={{ width: '100%', gap: 8, alignItems: 'flex-end', padding: '10px 12px', color: '#fff' }}>
                 자세 인식을 불러오지 못해 내 캐릭터가 따라 움직이지 않아요.
                 <button className="btn btn-dark btn-sm" onClick={pose.retry}>다시 시도</button>
               </span>
             )}
-            <button className="btn btn-brown" style={{ minWidth: 220, height: 64, fontSize: 22, justifyContent: 'space-between', pointerEvents: 'auto' }} disabled={isSaving} onClick={() => setIsEndConfirmOpen(true)}>
-              운동 마치기<span aria-hidden>&gt;</span>
-            </button>
           </div>
+          {/* 가운데 아래는 캐릭터가 서는 자리라 마치기는 오른쪽 아래 구석에 둔다 (#91) */}
+          <button className="btn btn-brown" style={{ position: 'absolute', right: 20, bottom: 24, minWidth: 220, height: 64, fontSize: 22, justifyContent: 'space-between' }} disabled={isSaving} onClick={() => setIsEndConfirmOpen(true)}>
+            운동 마치기<span aria-hidden>&gt;</span>
+          </button>
         </>
       )}
 

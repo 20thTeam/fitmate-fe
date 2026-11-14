@@ -10,7 +10,7 @@ import Characters3D from './Characters3D'
 import CoachScreen from './CoachScreen'
 import VideoScreen3D from './VideoScreen3D'
 import { PALETTES } from './palette'
-import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
+import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, ROW_Z_FRONT_OPEN, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
 
 /** tour: 대기 중 정면 + 드래그로 둘러보기·휠로 확대, front: 운동 중 스크린 정면 고정. 구도는 Figma 1:5 */
 export type CameraView = 'tour' | 'front'
@@ -193,9 +193,11 @@ interface Props {
   coachExerciseId?: string
   /** 있으면 스크린에 이 영상을 반복 재생한다. 영상을 못 불러오면 screen을 대신 보여준다 */
   screenVideoSrc?: string
+  /** 운동 중 하단 패널이 있는지. 없으면 캐릭터를 앞으로 당겨 크게 보여 준다 */
+  hasBottomPanel?: boolean
 }
 
-export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc }: Props) {
+export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc, hasBottomPanel = true }: Props) {
   const palette = PALETTES[theme]
   const screenRef = useRef<HTMLDivElement>(null)
   const tagRefs = useRef(new Map<string, HTMLElement>())
@@ -204,6 +206,7 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
   const [hasVideoError, setHasVideoError] = useState(false)
   const handleVideoError = useCallback(() => setHasVideoError(true), [])
   const isVideoShown = Boolean(screenVideoSrc) && !hasVideoError
+  const rowZ = view === 'front' && !hasBottomPanel ? ROW_Z_FRONT_OPEN : ROW_Z[view]
 
   return (
     <>
@@ -233,9 +236,9 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
         <Environment theme={theme} palette={palette} />
         {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} />}
         {coachExerciseId && <CoachScreen exerciseId={coachExerciseId} background={palette.panel} />}
-        {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={ROW_Z[view]} onCheer={onCheer} />}
+        {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={rowZ} onCheer={onCheer} />}
         <CameraRig view={view} />
-        <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={ROW_Z[view]} tagY={TAG_Y[view]} />
+        <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={rowZ} tagY={TAG_Y[view]} />
       </Canvas>
 
       {screen && !isVideoShown && (
