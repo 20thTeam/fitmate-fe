@@ -23,7 +23,7 @@ export default function VideoScreen({ src, fallback, label }: Props) {
       preload="auto"
       disablePictureInPicture
       onError={() => setHasError(true)}
-      style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000', pointerEvents: 'none' }}
+      style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', background: '#000', pointerEvents: 'none' }}
     />
   )
 }

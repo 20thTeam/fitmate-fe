@@ -12,6 +12,7 @@ interface Props {
 
 export default function VideoScreen3D({ src, onError }: Props) {
   const [texture, setTexture] = useState<VideoTexture | null>(null)
+  const [size, setSize] = useState<[number, number]>([SCREEN_W, SCREEN_H])
 
   useEffect(() => {
     const video = document.createElement('video')
@@ -22,19 +23,13 @@ export default function VideoScreen3D({ src, onError }: Props) {
     video.preload = 'auto'
     const t = new VideoTexture(video)
     t.colorSpace = SRGBColorSpace
-    // 스크린(약 2:1)보다 영상이 덜 넓으면 위아래를 잘라 꽉 채운다 (object-fit: cover와 같음)
+    // 영상이 잘리지 않게 비율을 지켜 스크린 안에 맞춘다 (#79). 남는 양옆·위아래는 검은 판이 채운다
     const handleMeta = () => {
       const videoAspect = video.videoWidth / video.videoHeight
-      const screenAspect = SCREEN_W / SCREEN_H
       if (!videoAspect) return
-      if (videoAspect < screenAspect) {
-        t.repeat.set(1, videoAspect / screenAspect)
-        t.offset.set(0, (1 - t.repeat.y) / 2)
-      } else {
-        t.repeat.set(screenAspect / videoAspect, 1)
-        t.offset.set((1 - t.repeat.x) / 2, 0)
-      }
-      // 크기를 안 뒤에 판에 입혀서 잘리기 전 모양이 잠깐 비치지 않게 한다
+      const screenAspect = SCREEN_W / SCREEN_H
+      setSize(videoAspect < screenAspect ? [SCREEN_H * videoAspect, SCREEN_H] : [SCREEN_W, SCREEN_W / videoAspect])
+      // 크기를 안 뒤에 판에 입혀서 늘어난 모양이 잠깐 비치지 않게 한다
       setTexture(t)
     }
     video.addEventListener('loadedmetadata', handleMeta)
@@ -53,12 +48,20 @@ export default function VideoScreen3D({ src, onError }: Props) {
     }
   }, [src, onError])
 
-  if (!texture) return null
+  // 스크린 판(앞면 z = SCREEN_CENTER z + 0.145)보다 아주 조금 앞에 둔다
+  const [x, y] = SCREEN_CENTER
   return (
-    // 스크린 판(앞면 z = SCREEN_CENTER z + 0.145)보다 아주 조금 앞에 둔다
-    <mesh position={[SCREEN_CENTER[0], SCREEN_CENTER[1], SCREEN_FACE_Z - 0.01]}>
-      <planeGeometry args={[SCREEN_W, SCREEN_H]} />
-      <meshBasicMaterial map={texture} toneMapped={false} fog={false} />
-    </mesh>
+    <group position={[x, y, SCREEN_FACE_Z - 0.012]}>
+      <mesh>
+        <planeGeometry args={[SCREEN_W, SCREEN_H]} />
+        <meshBasicMaterial color="#000" toneMapped={false} fog={false} />
+      </mesh>
+      {texture && (
+        <mesh position={[0, 0, 0.002]}>
+          <planeGeometry args={size} />
+          <meshBasicMaterial map={texture} toneMapped={false} fog={false} />
+        </mesh>
+      )}
+    </group>
   )
 }

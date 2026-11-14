@@ -14,7 +14,6 @@ import { useToast } from '../hooks/useToast'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
 import ParticipantPanel from '../components/room/ParticipantPanel'
-import { RoutineOrderPanel } from '../components/room/RoutinePanels'
 import SummaryBar from '../components/room/SummaryBar'
 import GuideScreen from '../components/room/GuideScreen'
 import { EndConfirmDialog, LeaveDialog } from '../components/room/WorkoutDialogs'
@@ -31,8 +30,6 @@ import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 /** 공개 운동방 목록에 그릴 최대 인원 (F-DXORMB 권장안: 일부만 표시 + 실제 인원은 따로) */
 const SUNSET_SHOWN = 5
 const ENTER_STEP_MS = 400
-
-const SUNSET_ITEMS = [{ ...SUNSET_EXERCISE, sets: 1, tag: '선셋 에어로빅 · 자유 진행' }]
 
 export default function Sunset() {
   const profile = useApp((s) => s.profile)!
@@ -55,10 +52,7 @@ function SunsetClosed({ nextOpenAt, schedule }: { nextOpenAt: number; schedule: 
     <Scene theme="public" screen={<GuideScreen idleTitle={`다음 오픈: ${opensAt}`} idleDesc="공개 운동방이 열리면 다른 참가자들과 자유롭게 에어로빅을 즐길 수 있어요." />}>
       <Logo />
       <ModeTabs active="public" />
-      <div style={{ position: 'absolute', left: 44, bottom: 48, width: 243 }}>
-        <RoutineOrderPanel items={SUNSET_ITEMS} sub="선셋 에어로빅" />
-      </div>
-      <div style={{ position: 'absolute', left: 316, right: 240, bottom: 48, display: 'flex', justifyContent: 'center' }}>
+      <div style={{ position: 'absolute', left: 240, right: 240, bottom: 48, display: 'flex', justifyContent: 'center' }}>
         <SummaryBar
           thumb={ROUTINE_THUMB}
           caption="오늘의 운동"
@@ -215,10 +209,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
       {phase === 'lobby' && (
         <>
           <div style={{ position: 'absolute', right: 30, top: 145, width: 243 }}>{panel}</div>
-          <div style={{ position: 'absolute', left: 44, bottom: 48, width: 243 }}>
-            <RoutineOrderPanel items={SUNSET_ITEMS} sub="선셋 에어로빅" />
-          </div>
-          <div style={{ position: 'absolute', left: 316, right: 240, bottom: 48, display: 'flex', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', left: 240, right: 240, bottom: 48, display: 'flex', justifyContent: 'center' }}>
             <SummaryBar
               thumb={ROUTINE_THUMB}
               caption="오늘의 운동"
