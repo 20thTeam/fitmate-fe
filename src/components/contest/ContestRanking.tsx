@@ -202,7 +202,7 @@ function niceStep(max: number) {
 }
 
 // 그래프 그리는 영역 (SVG 좌표). 패널 1251×643 안, 칩 줄 아래
-const PLOT = { w: 1251, h: 560, left: 122, right: 1130, top: 28, bottom: 498 }
+const PLOT = { w: 1300, h: 700, left: 140, right: 1160, top: 34, bottom: 624 }
 
 export function TrendPanel({ trend, standings }: { trend: ContestTrend | null; standings: ContestStandings | null }) {
   const [mode, setMode] = useState<TrendMode>('reps')
@@ -287,17 +287,17 @@ export function TrendPanel({ trend, standings }: { trend: ContestTrend | null; s
       ) : (
         <svg className="contest-trend-svg" viewBox={`0 0 ${PLOT.w} ${PLOT.h}`} role="img" aria-label={`${mode === 'reps' ? '누적 횟수' : '순위'} 추이 그래프`}>
           <defs>
-            <clipPath id="contest-logo-clip"><circle cx="0" cy="0" r="10.5" /></clipPath>
+            <clipPath id="contest-logo-clip"><circle cx="0" cy="0" r="13" /></clipPath>
           </defs>
           {ticks.map((t) => (
             <g key={t.label}>
               <line x1={PLOT.left - 30} x2={PLOT.right + 50} y1={yOf(t.v)} y2={yOf(t.v)} className="contest-grid" />
-              <text x={PLOT.left - 46} y={yOf(t.v)} className="contest-axis" textAnchor="end" dominantBaseline="central">{t.label}</text>
+              <text x={PLOT.left - 52} y={yOf(t.v)} className="contest-axis" textAnchor="end" dominantBaseline="central">{t.label}</text>
             </g>
           ))}
           {/* 라벨을 건너뛸 때는 마지막(지금) 시간이 꼭 보이게 뒤에서부터 센다 */}
           {shown.map((b, i) => (n - 1 - i) % labelEvery === 0 && (
-            <text key={b.startAt} x={xOf(i)} y={PLOT.bottom + 44} className="contest-axis" textAnchor="middle">{b.hour}시</text>
+            <text key={b.startAt} x={xOf(i)} y={PLOT.bottom + 52} className="contest-axis" textAnchor="middle">{b.hour}시</text>
           ))}
           <g key={dataKey}>
             {drawOrder.map((s) => (
@@ -306,7 +306,7 @@ export function TrendPanel({ trend, standings }: { trend: ContestTrend | null; s
                 points={s.points.map((p) => `${p.x},${p.y}`).join(' ')}
                 fill="none"
                 stroke={schoolColor(s.id)}
-                strokeWidth={3}
+                strokeWidth={4}
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 pathLength={1}
@@ -320,11 +320,11 @@ export function TrendPanel({ trend, standings }: { trend: ContestTrend | null; s
                 // 위치는 바깥 g, 나타나는 효과는 안쪽 g에 줘서 CSS 애니메이션이 위치를 덮어쓰지 않게 한다
                 <g key={`${s.id}-${i}`} transform={`translate(${p.x} ${p.y})`}>
                   <g className={isLast ? 'contest-point is-last' : 'contest-point'}>
-                    {isLast && <circle r={18} fill={schoolColor(s.id)} className="contest-pulse" />}
-                    <circle r={11.5} fill="#fff" stroke={schoolColor(s.id)} strokeWidth={2} />
+                    {isLast && <circle r={22} fill={schoolColor(s.id)} className="contest-pulse" />}
+                    <circle r={14.5} fill="#fff" stroke={schoolColor(s.id)} strokeWidth={2.5} />
                     {logo
-                      ? <image href={logo} x={-10.5} y={-10.5} width={21} height={21} clipPath="url(#contest-logo-clip)" preserveAspectRatio="xMidYMid meet" />
-                      : <circle r={7} fill={schoolColor(s.id)} />}
+                      ? <image href={logo} x={-13} y={-13} width={26} height={26} clipPath="url(#contest-logo-clip)" preserveAspectRatio="xMidYMid meet" />
+                      : <circle r={9} fill={schoolColor(s.id)} />}
                   </g>
                 </g>
               )
@@ -333,7 +333,7 @@ export function TrendPanel({ trend, standings }: { trend: ContestTrend | null; s
               const last = s.points.at(-1)
               if (!last) return null
               return (
-                <text key={`${s.id}-label`} x={last.x + 20} y={last.y} className="contest-end-label" fill={schoolColor(s.id)} dominantBaseline="central">
+                <text key={`${s.id}-label`} x={last.x + 24} y={last.y} className="contest-end-label" fill={schoolColor(s.id)} dominantBaseline="central">
                   {mode === 'reps' ? `${last.value}회` : `${last.rank}위`}
                 </text>
               )
@@ -364,11 +364,12 @@ export function BarsPanel({ standings }: { standings: ContestStandings | null })
             return (
               <li key={id} className={`contest-bar-col${s ? '' : ' is-empty'}`}>
                 <div className="contest-bar-area">
-                  {i === 0 && s && <img className="contest-bar-crown" src={crownIcon} alt="" width={24} height={24} />}
+                  {i === 0 && s && <img className="contest-bar-crown" src={crownIcon} alt="" width={32} height={32} />}
                   <b className="contest-bar-value">{reps}회</b>
-                  <div className="contest-bar-block" style={{ height: s ? Math.max(9, (reps / max) * 214) : 9, background: schoolColor(id) }} />
+                  <div className="contest-bar-block" style={{ height: s ? Math.max(9, (reps / max) * 280) : 10, background: schoolColor(id) }} />
                 </div>
-                <span className="contest-bar-name">{i + 1}. {schoolShortName(id)}</span>
+                <span className="contest-bar-rank">{i + 1}위</span>
+                <span className="contest-bar-name">{schoolShortName(id)}</span>
               </li>
             )
           })}
