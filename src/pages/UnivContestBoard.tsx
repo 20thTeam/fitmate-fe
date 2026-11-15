@@ -73,8 +73,8 @@ export default function UnivContestBoard() {
     <Backdrop theme="public">
       <div onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => { swipeFrom.current = null }} style={{ touchAction: 'pan-y' }}>
         <ContestStage>
-          {/* 시안대로 시상대 페이지만 제목이 조금 아래(202px)에 있다 */}
-          <TrophyTitle top={page === 'podium' ? 202 : undefined}>학교별 누적 스쿼트 순위</TrophyTitle>
+          {/* 시상대는 멀리서도 보이게 크게 그려서 제목을 조금 위로 올린다 */}
+          <TrophyTitle top={page === 'podium' ? 120 : undefined}>학교별 누적 스쿼트 순위</TrophyTitle>
           {!standings && (
             <div className="contest-panel col center" style={{ marginTop: 31, width: 1251, height: 643, gap: 16 }} role={error ? 'alert' : 'status'}>
               <p style={{ fontSize: 22, fontWeight: 700 }}>{error ? `순위를 불러오지 못했어요. ${error}` : '순위를 불러오는 중…'}</p>
@@ -84,7 +84,7 @@ export default function UnivContestBoard() {
           {standings && page === 'podium' && (
             <>
               <PodiumPanel standings={standings} />
-              <div className="contest-actions" style={{ marginTop: 32 }}>
+              <div className="contest-actions" style={{ marginTop: 24 }}>
                 <button type="button" className="contest-btn is-dark" onClick={() => setPage('bars')}>순위 자세히 보기</button>
               </div>
             </>
