@@ -193,11 +193,13 @@ interface Props {
   coachExerciseId?: string
   /** 있으면 스크린에 이 영상을 반복 재생한다. 영상을 못 불러오면 screen을 대신 보여준다 */
   screenVideoSrc?: string
+  /** 재생 중인 스크린 영상 (#110) */
+  screenVideoRef?: RefObject<HTMLVideoElement | null>
   /** 운동 중 하단 패널이 있는지. 없으면 캐릭터를 앞으로 당겨 크게 보여 준다 */
   hasBottomPanel?: boolean
 }
 
-export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc, hasBottomPanel = true }: Props) {
+export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc, screenVideoRef, hasBottomPanel = true }: Props) {
   const palette = PALETTES[theme]
   const screenRef = useRef<HTMLDivElement>(null)
   const tagRefs = useRef(new Map<string, HTMLElement>())
@@ -236,7 +238,7 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
           shadow-bias={-0.0004}
         />
         <Environment theme={theme} palette={palette} screenW={screenW} />
-        {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} width={screenW} />}
+        {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} width={screenW} videoRef={screenVideoRef} />}
         {coachExerciseId && <CoachScreen exerciseId={coachExerciseId} background={palette.panel} />}
         {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={rowZ} onCheer={onCheer} />}
         <CameraRig view={view} />

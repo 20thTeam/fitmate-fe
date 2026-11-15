@@ -1,6 +1,6 @@
 // 운동방 장면: 3D 무대(스크린·캐릭터) + 가장자리에 띄우는 패널(HUD).
 // WebGL을 못 쓰거나 3D가 실패하면 예전 2D 그림 장면으로 보여준다.
-import { lazy, Suspense, type CSSProperties, type ReactNode } from 'react'
+import { lazy, Suspense, type CSSProperties, type ReactNode, type RefObject } from 'react'
 import friendBg from '../../assets/bg/room-friend.jpg'
 import publicFrontBg from '../../assets/bg/public-room-front.jpg'
 import publicAngleBg from '../../assets/bg/public-room-angle.jpg'
@@ -32,7 +32,7 @@ interface Props {
    * 있으면 스크린에 이 영상을 소리 없이 반복 재생한다 (#66). 3D에서는 스크린 판에 직접 입혀
    * 앞에 선 캐릭터가 가려지지 않게 한다 (#76). 영상이 안 되면 screen을 보여준다
    */
-  screenVideo?: { src: string; label: string }
+  screenVideo?: { src: string; label: string; videoRef?: RefObject<HTMLVideoElement | null> }
   /** 운동 중 하단 패널이 있는지. 없으면 3D에서 캐릭터를 앞으로 당겨 크게 보여 준다 (#91) */
   hasBottomPanel?: boolean
   children: ReactNode
@@ -54,7 +54,7 @@ function FlatScene({ theme, view = 'tour', screen, participants, selfId, onCheer
 
 export default function Scene({ theme, screen, participants, selfId, onCheer, maxShown, view = 'tour', coachExerciseId, screenVideo, hasBottomPanel, children }: Props) {
   // 2D 그림 장면은 캐릭터가 스크린 밖에 서서 DOM 영상으로 충분하다
-  const flatScreen = screenVideo ? <VideoScreen src={screenVideo.src} label={screenVideo.label} fallback={screen} /> : screen
+  const flatScreen = screenVideo ? <VideoScreen src={screenVideo.src} label={screenVideo.label} fallback={screen} videoRef={screenVideo.videoRef} /> : screen
   const flat = <FlatScene theme={theme} view={view} screen={flatScreen} participants={participants} selfId={selfId} onCheer={onCheer} maxShown={maxShown} />
   return (
     <main className="scene" data-theme={theme}>
@@ -63,7 +63,7 @@ export default function Scene({ theme, screen, participants, selfId, onCheer, ma
           <ThreeBoundary fallback={flat}>
             {/* 3D를 받는 동안에는 같은 구도의 2D 그림을 보여준다 */}
             <Suspense fallback={<FlatScene theme={theme} view={view} />}>
-              <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} coachExerciseId={coachExerciseId} screenVideoSrc={screenVideo?.src} hasBottomPanel={hasBottomPanel} />
+              <Room3D theme={theme} screen={screen} participants={participants ?? []} selfId={selfId} onCheer={onCheer} maxShown={maxShown} view={view} coachExerciseId={coachExerciseId} screenVideoSrc={screenVideo?.src} screenVideoRef={screenVideo?.videoRef} hasBottomPanel={hasBottomPanel} />
             </Suspense>
           </ThreeBoundary>
         ) : flat}
