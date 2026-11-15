@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { services } from '../services'
 import type { Routine, RoutineItem, TeamProgress, WorkoutSession } from '../types/domain'
 import { durationLabel, setAmountLabel, shortAmountLabel } from '../lib/format'
 import { completionRate } from '../lib/stats'
 import Backdrop from '../components/Backdrop'
+import type { SunsetResultState } from './Sunset'
 import { CenterMessage, ProgressBar, ProvisionalBadge, StatCard } from '../components/ui'
 
 // F-XXCKUD 결과 요약, F-SYGFQC·F-WBCAEC 다음 회차 추천, F-WFAMYP 팀 경험치 · Figma '운동 완료'
@@ -18,6 +19,8 @@ const headlineOf = (rate: number) =>
 export default function Result() {
   const { sessionId = '' } = useParams()
   const nav = useNavigate()
+  // 공개 운동방 싱크로율 (#110). 저장하지 않고 운동방에서 넘겨받아, 새로 고치면 없다
+  const syncRate = (useLocation().state as Partial<SunsetResultState> | null)?.syncRate ?? null
   const [session, setSession] = useState<WorkoutSession | null | undefined>(undefined)
   const [routine, setRoutine] = useState<Routine | null>(null)
   const [team, setTeam] = useState<TeamProgress | 'loading' | 'error'>('loading')
@@ -88,7 +91,9 @@ export default function Result() {
                   return (
                     <li key={r.exerciseId} className="row between" style={{ padding: '12px 0' }}>
                       <strong style={{ fontSize: 20 }}>{r.name}</strong>
-                      <span className="t-soft" style={{ fontWeight: 700 }}>참여 완료 · 횟수는 세지 않아요</span>
+                      <span className="t-soft" style={{ fontWeight: 700 }}>
+                        {syncRate === null ? '참여 완료 · 횟수는 세지 않아요' : <>영상 싱크로율 {syncRate}% <ProvisionalBadge>판정 기준 임시</ProvisionalBadge></>}
+                      </span>
                     </li>
                   )
                 }
