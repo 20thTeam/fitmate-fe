@@ -93,6 +93,30 @@ export const PROVISIONAL_SUNSET = { openHourKst: 22, durationMin: 60 }
 /** 선셋 에어로빅 동작. 영상 따라 여러 동작을 하니 화면에는 '선셋 에어로빅'으로 보여 주고, ID는 서버 계약대로 둔다 (#85) */
 export const SUNSET_EXERCISE = { exerciseId: 'aerobic_jumping_jack', name: '선셋 에어로빅' }
 
+/**
+ * 미정: 공개 운동방 싱크로율 판정 기준 (#110). 기획에 점수 정의가 없어 개발팀 제안값이다.
+ * 1초마다 최근 windowMs 동안 지금 영상 동작의 핵심 움직임 폭(미터, 월드 좌표)이 기준을 넘으면 '맞음'.
+ */
+export const PROVISIONAL_SUNSET_SYNC = {
+  windowMs: 1500,
+  /** 동작이 바뀐 뒤 이 초 동안은 앞 동작을 해도 맞음 (영상을 보고 따라 바꾸는 시간) */
+  graceSec: 2,
+  /** 판정 구간 안에 필요한 관절이 보인 장면이 이보다 적으면 판정하지 않는다 */
+  minFrames: 5,
+  /** 제자리 걷기·마무리: 두 발목 높이 차이가 바뀌는 폭 */
+  walkM: 0.06,
+  /** 좌우 스텝 터치: 두 발 사이 너비가 바뀌는 폭 */
+  stepSpreadM: 0.1,
+  /** 팔 벌리고 모으기: 두 손목 사이 너비가 바뀌는 폭 */
+  armSpreadM: 0.3,
+  /** 무릎 번갈아 올리기: 두 무릎 높이 차이가 바뀌는 폭. 제자리 걷기(약 0.12)보다 크게 올려야 맞음 */
+  kneeLiftM: 0.16,
+  /** 좌우 한팔 뻗기: 두 손목이 각자 어깨에서 옆으로 나간 거리의 차이가 바뀌는 폭 (한쪽씩 뻗기) */
+  reachSwapM: 0.3,
+  /** 이만큼 판정한 뒤부터 싱크로율 숫자를 보여 준다 */
+  minJudgedSec: 3,
+}
+
 /** 친구 파티 최대 인원 (PRD 확정: 2~5명) */
 export const PARTY_MAX = 5
 
