@@ -73,10 +73,10 @@ export default function UnivContestBoard() {
     <Backdrop theme="public">
       <div onPointerDown={onPointerDown} onPointerUp={onPointerUp} onPointerCancel={() => { swipeFrom.current = null }} style={{ touchAction: 'pan-y' }}>
         <ContestStage>
-          {/* 시상대는 멀리서도 보이게 크게 그려서 제목을 조금 위로 올린다 */}
-          <TrophyTitle top={page === 'podium' ? 120 : undefined}>학교별 누적 스쿼트 순위</TrophyTitle>
+          {/* 멀리서도 보이게 모든 페이지를 크게 그려서 제목을 조금 위로 올린다 */}
+          <TrophyTitle top={120}>학교별 누적 스쿼트 순위</TrophyTitle>
           {!standings && (
-            <div className="contest-panel col center" style={{ marginTop: 31, width: 1251, height: 643, gap: 16 }} role={error ? 'alert' : 'status'}>
+            <div className="contest-panel col center" style={{ marginTop: 24, width: 1300, height: 800, gap: 16 }} role={error ? 'alert' : 'status'}>
               <p style={{ fontSize: 22, fontWeight: 700 }}>{error ? `순위를 불러오지 못했어요. ${error}` : '순위를 불러오는 중…'}</p>
               {error && <button type="button" className="contest-btn" onClick={load}>다시 시도</button>}
             </div>
