@@ -5,6 +5,11 @@ import { Vector3, type Camera } from 'three'
 // Figma 1:5: 스크린 아랫변이 무대 바닥에 거의 닿고, 가로:세로가 약 2:1
 export const SCREEN_W = 8.8
 export const SCREEN_H = 4.3
+/**
+ * 영상을 트는 스크린(공개 운동방)의 너비. 따라하기 영상이 16:9라 2:1 틀이면 양옆에 검은 띠가 생겨서
+ * 틀을 영상 비율에 맞춰 줄인다. 영상이 없는 친구 운동방은 SCREEN_W 그대로다
+ */
+export const VIDEO_SCREEN_W = (SCREEN_H * 16) / 9
 /** 스크린 가운데 위치. 카메라도 이 근처를 바라본다. */
 export const SCREEN_CENTER: [number, number, number] = [0, 0.4 + SCREEN_H / 2, -2.6]
 /** 스크린 왼쪽에서 AI 코치 시범 칸이 차지하는 비율. 오른쪽에는 동작 이름·설명 DOM이 온다 */

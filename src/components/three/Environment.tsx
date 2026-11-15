@@ -170,19 +170,19 @@ function Bush({ position, scale = 1 }: PropProps) {
 }
 
 /** 스크린 틀과 빈 판. 안의 내용은 Room3D가 DOM으로 겹친다. */
-function Screen({ palette }: { palette: RoomPalette }) {
+function Screen({ palette, width }: { palette: RoomPalette; width: number }) {
   const [x, y, z] = SCREEN_CENTER
   return (
     <group position={[x, y, z]}>
-      <RoundedBox args={[SCREEN_W + 0.4, SCREEN_H + 0.4, 0.28]} radius={0.12} castShadow>
+      <RoundedBox args={[width + 0.4, SCREEN_H + 0.4, 0.28]} radius={0.12} castShadow>
         <meshStandardMaterial color={palette.frame} roughness={0.5} />
       </RoundedBox>
       <mesh position={[0, 0, 0.145]}>
-        <planeGeometry args={[SCREEN_W, SCREEN_H]} />
+        <planeGeometry args={[width, SCREEN_H]} />
         <meshStandardMaterial color={palette.panel} emissive={palette.panel} emissiveIntensity={0.35} roughness={0.4} />
       </mesh>
       {/* 스크린 다리 */}
-      {[-SCREEN_W / 3, SCREEN_W / 3].map((px) => (
+      {[-width / 3, width / 3].map((px) => (
         <mesh key={px} position={[px, -(SCREEN_H / 2 + y) / 2, -0.02]} castShadow>
           <boxGeometry args={[0.18, y - SCREEN_H / 2, 0.14]} />
           <meshStandardMaterial color={palette.frame} roughness={0.5} />
@@ -328,7 +328,8 @@ function PublicStage({ palette }: { palette: RoomPalette }) {
   )
 }
 
-export default function Environment({ theme, palette }: { theme: Theme; palette: RoomPalette }) {
+/** screenW: 스크린 틀 너비. 영상을 트는 공개 운동방은 영상 비율에 맞춘 너비를 넘긴다 */
+export default function Environment({ theme, palette, screenW = SCREEN_W }: { theme: Theme; palette: RoomPalette; screenW?: number }) {
   const isFriend = theme === 'friend'
   return (
     <>
@@ -354,7 +355,7 @@ export default function Environment({ theme, palette }: { theme: Theme; palette:
         </>
       )}
 
-      <Screen palette={palette} />
+      <Screen palette={palette} width={screenW} />
 
       {isFriend && (
         <>

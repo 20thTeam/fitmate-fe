@@ -8,11 +8,13 @@ interface Props {
   src: string
   /** 영상을 못 불러오면 부른다. Room3D가 DOM 안내 화면으로 바꾼다 */
   onError: () => void
+  /** 스크린 틀 안쪽 너비. 기본은 SCREEN_W */
+  width?: number
 }
 
-export default function VideoScreen3D({ src, onError }: Props) {
+export default function VideoScreen3D({ src, onError, width = SCREEN_W }: Props) {
   const [texture, setTexture] = useState<VideoTexture | null>(null)
-  const [size, setSize] = useState<[number, number]>([SCREEN_W, SCREEN_H])
+  const [size, setSize] = useState<[number, number]>([width, SCREEN_H])
 
   useEffect(() => {
     const video = document.createElement('video')
@@ -27,8 +29,8 @@ export default function VideoScreen3D({ src, onError }: Props) {
     const handleMeta = () => {
       const videoAspect = video.videoWidth / video.videoHeight
       if (!videoAspect) return
-      const screenAspect = SCREEN_W / SCREEN_H
-      setSize(videoAspect < screenAspect ? [SCREEN_H * videoAspect, SCREEN_H] : [SCREEN_W, SCREEN_W / videoAspect])
+      const screenAspect = width / SCREEN_H
+      setSize(videoAspect < screenAspect ? [SCREEN_H * videoAspect, SCREEN_H] : [width, width / videoAspect])
       // 크기를 안 뒤에 판에 입혀서 늘어난 모양이 잠깐 비치지 않게 한다
       setTexture(t)
     }
@@ -46,14 +48,14 @@ export default function VideoScreen3D({ src, onError }: Props) {
       video.load()
       t.dispose()
     }
-  }, [src, onError])
+  }, [src, onError, width])
 
   // 스크린 판(앞면 z = SCREEN_CENTER z + 0.145)보다 아주 조금 앞에 둔다
   const [x, y] = SCREEN_CENTER
   return (
     <group position={[x, y, SCREEN_FACE_Z - 0.012]}>
       <mesh>
-        <planeGeometry args={[SCREEN_W, SCREEN_H]} />
+        <planeGeometry args={[width, SCREEN_H]} />
         <meshBasicMaterial color="#000" toneMapped={false} fog={false} />
       </mesh>
       {texture && (
