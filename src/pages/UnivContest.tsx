@@ -105,6 +105,7 @@ export default function UnivContest() {
   const camera = useCamera()
   const poseCanvasRef = useRef<HTMLCanvasElement>(null)
   const counter = useMemo(() => createRepCounter(CONTEST_RULES.exerciseId), [])
+  const playCameraSize = useScreenCameraSize()
   /** 운동 시간 안에서만 센다. 매 프레임 읽으므로 상태가 아닌 ref */
   const isCountingRef = useRef(false)
   /** 운동 시간 안에 자세가 한 번이라도 잡혔는지. 아니면 '측정 안 됨'으로 낸다 */
@@ -321,10 +322,11 @@ export default function UnivContest() {
         </div>
 
         <div className="glass col" style={{ position: 'absolute', left: 28, bottom: 28, gap: 8, padding: 12 }}>
-          <CameraPanel camera={camera} pose={pose} isSupported={!!counter} setupHint={counter?.setupHint ?? ''} canvasRef={poseCanvasRef} size="sm" />
+          <CameraPanel camera={camera} pose={pose} isSupported={!!counter} setupHint={counter?.setupHint ?? ''} canvasRef={poseCanvasRef} size={playCameraSize} />
         </div>
 
-        <div className="col center" style={{ position: 'absolute', left: 360, right: 330, bottom: 28, gap: 10 }}>
+        {/* 왼쪽 아래 카메라(+유리 패널 여백) 옆부터 오른쪽 참가자 패널 앞까지의 가운데 */}
+        <div className="col center" style={{ position: 'absolute', left: playCameraSize.width + 28 + 24 + 16, right: 330, bottom: 28, gap: 10 }}>
           {view === 'lobby' ? (
             <>
               {actionError && <p className="glass t-small" role="alert" style={{ padding: '8px 14px' }}>{actionError}</p>}
@@ -478,11 +480,36 @@ interface CameraPanelProps {
   isSupported: boolean
   setupHint: string
   canvasRef: React.RefObject<HTMLCanvasElement | null>
-  size?: 'sm' | 'md'
+  /** md = 참가 준비 화면 400×300. 대기·운동 화면은 화면 크기에 맞춘 값을 넘긴다 */
+  size?: 'md' | CameraSize
+}
+
+interface CameraSize {
+  width: number
+  height: number
+}
+
+/** 대기·운동 화면 카메라가 차지할 화면 넓이 비율 (#118). 300×225로는 자세가 잘 안 보였다 */
+const PLAY_CAMERA_AREA = 1 / 6
+
+/** 4:3 카메라의 넓이가 화면 넓이의 PLAY_CAMERA_AREA가 되는 크기 */
+const playCameraSizeFor = (screenW: number, screenH: number): CameraSize => {
+  const width = Math.round(Math.sqrt((screenW * screenH * PLAY_CAMERA_AREA) / 0.75))
+  return { width, height: Math.round(width * 0.75) }
+}
+
+function useScreenCameraSize() {
+  const [size, setSize] = useState(() => playCameraSizeFor(window.innerWidth, window.innerHeight))
+  useEffect(() => {
+    const onResize = () => setSize(playCameraSizeFor(window.innerWidth, window.innerHeight))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  return size
 }
 
 function CameraPanel({ camera, pose, isSupported, setupHint, canvasRef, size: sizeName = 'md' }: CameraPanelProps) {
-  const size = sizeName === 'sm' ? { width: 300, height: 225 } : { width: 400, height: 300 }
+  const size = sizeName === 'md' ? { width: 400, height: 300 } : sizeName
   const isBroken = camera.state === 'denied' || camera.state === 'unavailable'
   return (
     <div className="col" style={{ gap: 8, width: size.width }}>
