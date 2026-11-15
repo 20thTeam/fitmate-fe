@@ -106,6 +106,8 @@ export default function UnivContest() {
   const poseCanvasRef = useRef<HTMLCanvasElement>(null)
   const counter = useMemo(() => createRepCounter(CONTEST_RULES.exerciseId), [])
   const playCameraSize = useScreenCameraSize()
+  /** 왼쪽 아래 카메라 유리 패널의 오른쪽 끝 (화면 왼쪽 여백 28 + 패널 안 여백 12×2) */
+  const playCameraPanelRight = playCameraSize.width + 28 + 24
   /** 운동 시간 안에서만 센다. 매 프레임 읽으므로 상태가 아닌 ref */
   const isCountingRef = useRef(false)
   /** 운동 시간 안에 자세가 한 번이라도 잡혔는지. 아니면 '측정 안 됨'으로 낸다 */
@@ -295,6 +297,7 @@ export default function UnivContest() {
         participants={stage.figures}
         selfId={playerId}
         maxShown={CONTEST_RULES.maxPlayers}
+        focusLeft={playCameraPanelRight}
       >
         {hurry !== 'none' && <div className={`contest-vignette is-${hurry}`} aria-hidden />}
         <Logo isLight />
@@ -326,7 +329,7 @@ export default function UnivContest() {
         </div>
 
         {/* 왼쪽 아래 카메라(+유리 패널 여백) 옆부터 오른쪽 참가자 패널 앞까지의 가운데 */}
-        <div className="col center" style={{ position: 'absolute', left: playCameraSize.width + 28 + 24 + 16, right: 330, bottom: 28, gap: 10 }}>
+        <div className="col center" style={{ position: 'absolute', left: playCameraPanelRight + 16, right: 330, bottom: 28, gap: 10 }}>
           {view === 'lobby' ? (
             <>
               {actionError && <p className="glass t-small" role="alert" style={{ padding: '8px 14px' }}>{actionError}</p>}

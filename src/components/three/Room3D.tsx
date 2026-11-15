@@ -2,7 +2,7 @@
 // 스크린 내용과 이름표는 캔버스 위에 DOM으로 겹치고, 매 프레임 3D 위치에 맞춰 옮긴다.
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Vector3 } from 'three'
+import { Vector3, type PerspectiveCamera } from 'three'
 import type { Participant } from '../../types/domain'
 import type { Theme } from '../Backdrop'
 import Environment from './Environment'
@@ -40,7 +40,7 @@ const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(mi
 /** 각도를 -π~π로 맞춘다 (정면으로 돌아올 때 가까운 쪽으로 돌게) */
 const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 
-function CameraRig({ view }: { view: CameraView }) {
+function CameraRig({ view, focusLeft = 0 }: { view: CameraView; focusLeft?: number }) {
   const camera = useThree((s) => s.camera)
   const size = useThree((s) => s.size)
   const gl = useThree((s) => s.gl)
@@ -119,7 +119,21 @@ function CameraRig({ view }: { view: CameraView }) {
       d.pitch -= d.pitch * back
     }
     d.zoom += (d.zoomGoal - d.zoom) * (1 - Math.exp(-delta * 6))
-    const aspect = size.width / size.height
+    // 왼쪽 focusLeft만큼을 뺀 영역을 '화면'으로 보고 구도를 잡은 뒤, 그 왼쪽까지 이어서 그린다 (#120).
+    // 값이 바뀔 때만 투영을 다시 계산한다
+    const focusW = Math.max(1, size.width - focusLeft)
+    const aspect = focusW / size.height
+    const cam = state.camera as PerspectiveCamera
+    const hasOffset = focusLeft > 0
+    const isOffsetStale = hasOffset
+      ? cam.view?.enabled !== true || cam.view.fullWidth !== focusW || cam.view.fullHeight !== size.height || cam.view.offsetX !== -focusLeft || cam.view.width !== size.width
+      : cam.view?.enabled === true
+    if (cam.aspect !== aspect || isOffsetStale) {
+      cam.aspect = aspect
+      if (hasOffset) cam.setViewOffset(focusW, size.height, -focusLeft, 0, size.width, size.height)
+      else cam.clearViewOffset()
+      cam.updateProjectionMatrix()
+    }
     const dist = BASE_DIST * Math.max(1, DESIGN_ASPECT / aspect) * d.zoom
     const swing = canDrag && !isReducedMotion ? Math.sin(state.clock.elapsedTime * 0.2) * 0.07 : 0
     // 마우스를 따라 아주 조금 움직여 입체감을 준다 (드래그 중에는 끔)
@@ -197,9 +211,11 @@ interface Props {
   screenVideoRef?: RefObject<HTMLVideoElement | null>
   /** 운동 중 하단 패널이 있는지. 없으면 캐릭터를 앞으로 당겨 크게 보여 준다 */
   hasBottomPanel?: boolean
+  /** 구도를 화면 왼쪽 이만큼(px)을 뺀 나머지 가운데에 맞춘다 (#120) */
+  focusLeft?: number
 }
 
-export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc, screenVideoRef, hasBottomPanel = true }: Props) {
+export default function Room3D({ theme, screen, participants, selfId, onCheer, maxShown = 6, view, coachExerciseId, screenVideoSrc, screenVideoRef, hasBottomPanel = true, focusLeft = 0 }: Props) {
   const palette = PALETTES[theme]
   const screenRef = useRef<HTMLDivElement>(null)
   const tagRefs = useRef(new Map<string, HTMLElement>())
@@ -241,7 +257,7 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
         {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} width={screenW} videoRef={screenVideoRef} />}
         {coachExerciseId && <CoachScreen exerciseId={coachExerciseId} background={palette.panel} />}
         {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={rowZ} onCheer={onCheer} />}
-        <CameraRig view={view} />
+        <CameraRig view={view} focusLeft={focusLeft} />
         <OverlayProjector screenRef={screenRef} tagRefs={tagRefs} tagIds={tagIds} rowZ={rowZ} tagY={TAG_Y[view]} />
       </Canvas>
 
