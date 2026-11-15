@@ -139,9 +139,9 @@ export function ResultNotice({ icon, title, sub, badge }: { icon: string; title:
 
 /** 단상 색(금·은·동)·높이·메달 (2등·1등·3등 순서로 놓는다) */
 const PODIUM = [
-  { rank: 2, color: 'linear-gradient(180deg, #e3e8ef, #b9c2cf)', height: 150, medal: '🥈' },
-  { rank: 1, color: 'linear-gradient(180deg, #ffe38a, #e9bd45)', height: 200, medal: '🥇' },
-  { rank: 3, color: 'linear-gradient(180deg, #ecb98c, #c98a57)', height: 125, medal: '🥉' },
+  { rank: 2, color: 'linear-gradient(180deg, #e3e8ef, #b9c2cf)', height: 220, medal: '🥈' },
+  { rank: 1, color: 'linear-gradient(180deg, #ffe38a, #e9bd45)', height: 290, medal: '🥇' },
+  { rank: 3, color: 'linear-gradient(180deg, #ecb98c, #c98a57)', height: 180, medal: '🥉' },
 ]
 
 export function PodiumPanel({ standings }: { standings: ContestStandings | null }) {
@@ -156,7 +156,7 @@ export function PodiumPanel({ standings }: { standings: ContestStandings | null 
             const reps = id ? repsOf.get(id) : undefined
             return (
               <div key={p.rank} className="contest-podium-col">
-                {p.rank === 1 && reps !== undefined && <img src={crownIcon} alt="" width={44} height={44} />}
+                {p.rank === 1 && reps !== undefined && <img src={crownIcon} alt="" width={58} height={58} />}
                 <strong className="contest-podium-name">{reps !== undefined ? schoolShortName(id) : '아직 기록 없음'}</strong>
                 {reps !== undefined && <span className="contest-podium-reps">{reps}회</span>}
                 <div className="contest-podium-block" style={{ height: p.height, background: p.color }}>
