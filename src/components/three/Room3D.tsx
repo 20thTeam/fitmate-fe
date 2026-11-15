@@ -10,7 +10,7 @@ import Characters3D from './Characters3D'
 import CoachScreen from './CoachScreen'
 import VideoScreen3D from './VideoScreen3D'
 import { PALETTES } from './palette'
-import { SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, ROW_Z_FRONT_OPEN, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
+import { SCREEN_W, VIDEO_SCREEN_W, SCREEN_CENTER, SCREEN_CORNERS, SCREEN_FACE_Z, SCREEN_PX_H, SCREEN_PX_W, ROW_Z, ROW_Z_FRONT_OPEN, TAG_Y, figureX, projectToPx, quadToMatrix3d } from './layout'
 
 /** tour: 대기 중 정면 + 드래그로 둘러보기·휠로 확대, front: 운동 중 스크린 정면 고정. 구도는 Figma 1:5 */
 export type CameraView = 'tour' | 'front'
@@ -206,6 +206,8 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
   const [hasVideoError, setHasVideoError] = useState(false)
   const handleVideoError = useCallback(() => setHasVideoError(true), [])
   const isVideoShown = Boolean(screenVideoSrc) && !hasVideoError
+  // 영상을 틀 때만 틀을 영상 비율로 줄인다. 영상이 실패하면 원래 너비로 돌아가 DOM 안내 화면을 겹친다
+  const screenW = isVideoShown ? VIDEO_SCREEN_W : SCREEN_W
   const rowZ = view === 'front' && !hasBottomPanel ? ROW_Z_FRONT_OPEN : ROW_Z[view]
 
   return (
@@ -233,8 +235,8 @@ export default function Room3D({ theme, screen, participants, selfId, onCheer, m
           shadow-camera-bottom={-22}
           shadow-bias={-0.0004}
         />
-        <Environment theme={theme} palette={palette} />
-        {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} />}
+        <Environment theme={theme} palette={palette} screenW={screenW} />
+        {isVideoShown && screenVideoSrc && <VideoScreen3D src={screenVideoSrc} onError={handleVideoError} width={screenW} />}
         {coachExerciseId && <CoachScreen exerciseId={coachExerciseId} background={palette.panel} />}
         {selfId && <Characters3D participants={shown} selfId={selfId} rowZ={rowZ} onCheer={onCheer} />}
         <CameraRig view={view} />
