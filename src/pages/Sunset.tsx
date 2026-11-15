@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useBlocker, useNavigate } from 'react-router-dom'
 import { services } from '../services'
 import { SUNSET_ROOM_ID, useApp } from '../store/app'
@@ -13,8 +13,11 @@ import { useNow } from '../hooks/useNow'
 import { useToast } from '../hooks/useToast'
 import { CAMERA_MESSAGE, useCamera } from '../hooks/useCamera'
 import { usePose } from '../hooks/usePose'
+import { createSunsetSync, moveIndexAt, type SyncJudge } from '../lib/pose/sunsetSync'
+import type { PoseInput } from '../lib/pose/repCounter'
 import CameraCheck from '../components/CameraCheck'
 import MyCameraPanel from '../components/room/MyCameraPanel'
+import SyncPanel from '../components/room/SyncPanel'
 import Scene from '../components/room/Scene'
 import ModeTabs from '../components/room/ModeTabs'
 import ParticipantPanel from '../components/room/ParticipantPanel'
@@ -29,14 +32,13 @@ import sunsetVideo from '../assets/video/sunset-aerobic.mp4'
 
 // 공개 운동방 (선셋 에어로빅, F-DXORMB) · Figma '공개 운동방' 시안
 // 열려 있는 동안 자유 입장, 입장 후 각자 시작. 인원 제한 없음. 결과는 다음 회차 추천에 반영하지 않는다.
-// 영상을 보며 자유롭게 따라 하는 방이라 횟수 세기 없이 참가자와 마치기만 둔다.
-// 카메라는 내 관절 좌표로 캐릭터를 움직이고 다른 참가자에게 보여 주는 데만 쓴다 (#87).
+// 영상을 보며 자유롭게 따라 하는 방이라 횟수는 세지 않는다.
+// 카메라는 내 관절 좌표로 캐릭터를 움직이고(#87), 영상 동작을 따라 했는지 싱크로율로 보여 주는 데(#110) 쓴다.
+// 싱크로율은 서버에 저장하지 않고 결과 화면에만 넘긴다 (기록 API에 칸이 없음).
 
 /** 공개 운동방 목록에 그릴 최대 인원 (F-DXORMB 권장안: 일부만 표시 + 실제 인원은 따로) */
 const SUNSET_SHOWN = 5
 const ENTER_STEP_MS = 400
-// 횟수를 세지 않으니 관절이 보이기만 하면 인식 중으로 본다
-const trackOnly = () => true
 
 export default function Sunset() {
   const profile = useApp((s) => s.profile)!
@@ -79,6 +81,11 @@ function SunsetClosed({ nextOpenAt, schedule }: { nextOpenAt: number; schedule: 
 
 type Phase = 'lobby' | 'camera' | 'entering' | 'play'
 
+/** 결과 화면에 넘기는 값. 저장하지 않아서 결과 화면을 새로 고치면 사라진다 */
+export interface SunsetResultState {
+  syncRate: number | null
+}
+
 function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesAt: number | null; schedule: PublicPartySchedule }) {
   const nav = useNavigate()
   const room = useRoom(SUNSET_ROOM_ID, profile, { maxParticipants: null, initial: { status: 'waiting' } })
@@ -98,7 +105,16 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
 
   // 내 3D 캐릭터를 움직이고, 같은 좌표를 useRoom이 다른 참가자에게 보낸다. 모델은 카메라 확인 단계부터 미리 받는다
   const poseCanvasRef = useRef<HTMLCanvasElement>(null)
-  const pose = usePose({ stream: camera.stream, shouldLoad: phase !== 'lobby', isActive: phase === 'play', onFrame: trackOnly, canvasRef: poseCanvasRef })
+  // 싱크로율 (#110). 매 프레임 관절을 쌓고 1초마다 영상 재생 위치의 동작을 했는지 판정한다
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [sync] = useState(createSunsetSync)
+  const [syncView, setSyncView] = useState<{ moveIndex: number; judge: SyncJudge; rate: number | null } | null>(null)
+  // 횟수를 세지 않으니 관절이 보이기만 하면 인식 중으로 본다
+  const handlePoseFrame = useCallback((input: PoseInput) => {
+    sync.push(input.world, input.t)
+    return true
+  }, [sync])
+  const pose = usePose({ stream: camera.stream, shouldLoad: phase !== 'lobby', isActive: phase === 'play', onFrame: handlePoseFrame, canvasRef: poseCanvasRef })
   const isCameraBroken = phase === 'play' && camera.state !== 'on'
 
   const blocker = useBlocker(({ nextLocation }) => phase === 'play' && !isSaving && !nextLocation.pathname.startsWith('/result'))
@@ -107,6 +123,17 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
     if (phase !== 'play') return
     room.updateSelf({ status: 'exercising', currentExercise: SUNSET_EXERCISE.name })
   }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (phase !== 'play') return
+    const id = setInterval(() => {
+      const video = videoRef.current
+      // 영상을 못 불러오면 지금 동작을 알 수 없어 싱크로율을 숨긴다
+      if (!video || video.readyState < 2 || video.error) return setSyncView(null)
+      setSyncView({ moveIndex: moveIndexAt(video.currentTime), judge: sync.judge(video.currentTime, performance.now()), rate: sync.rate() })
+    }, 1000)
+    return () => clearInterval(id)
+  }, [phase, sync])
 
   // 파티가 닫혀도 이미 운동 중인 사람은 마칠 수 있다 (F-DXORMB 권장안)
   const isClosed = closesAt !== null && now > closesAt
@@ -162,7 +189,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
       await services.record.saveSession(session)
       room.updateSelf({ status: 'done' })
       camera.stop()
-      nav(`/result/${session.sessionId}`)
+      nav(`/result/${session.sessionId}`, { state: { syncRate: sync.rate() } satisfies SunsetResultState })
     } catch {
       setIsSaving(false)
       setHasSaveError(true)
@@ -212,7 +239,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
     <Scene
       theme="public"
       // 공개방은 동작 안내 카드 대신 에어로빅 영상을 계속 반복해서 틀어 둔다 (#66). 영상이 안 되면 안내 카드
-      screenVideo={{ src: sunsetVideo, label: '선셋 에어로빅 따라하기 영상' }}
+      screenVideo={{ src: sunsetVideo, label: '선셋 에어로빅 따라하기 영상', videoRef }}
       screen={<GuideScreen exerciseId={phase === 'play' ? SUNSET_EXERCISE.exerciseId : undefined} name={SUNSET_EXERCISE.name} idleTitle="선셋 에어로빅이 열렸어요!" idleDesc={`지금 ${room.participants.length}명 참가 중 · 준비되면 각자 시작해요`} />}
       participants={room.participants}
       selfId={profile.userId}
@@ -262,6 +289,7 @@ function SunsetRoom({ profile, closesAt, schedule }: { profile: Profile; closesA
           <div style={{ position: 'absolute', left: 20, top: 96, width: 300 }}>{panel}</div>
           {/* 안내는 카메라 칸 바로 아래에 둔다. 아래쪽은 캐릭터가 서는 자리다 (#91) */}
           <div className="col" style={{ position: 'absolute', right: 20, top: 296, width: 300, gap: 8, alignItems: 'flex-end' }}>
+            {syncView && <SyncPanel moveIndex={syncView.moveIndex} judge={syncView.judge} rate={syncView.rate} />}
             {isClosed && <span className="chip chip-ghost" style={{ whiteSpace: 'normal' }}>운영은 끝났지만 지금 운동은 마칠 수 있어요</span>}
             {/* 횟수를 세지 않아 운동을 막지 않고, 캐릭터가 멈춘 이유와 다시 켜는 버튼만 알린다 */}
             {isCameraBroken ? (

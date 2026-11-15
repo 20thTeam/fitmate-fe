@@ -1,18 +1,21 @@
 // 운동방 가운데 스크린에 띄우는 따라하기 영상. 소리 없이 자동 재생하고 끝나면 처음부터 다시 튼다 (#66).
-import { useState, type ReactNode } from 'react'
+import { useState, type ReactNode, type RefObject } from 'react'
 
 interface Props {
   src: string
   /** 영상을 못 불러오면 대신 보여줄 화면 */
   fallback: ReactNode
   label: string
+  /** 재생 위치를 읽을 때 쓴다 (#110) */
+  videoRef?: RefObject<HTMLVideoElement | null>
 }
 
-export default function VideoScreen({ src, fallback, label }: Props) {
+export default function VideoScreen({ src, fallback, label, videoRef }: Props) {
   const [hasError, setHasError] = useState(false)
   if (hasError) return <>{fallback}</>
   return (
     <video
+      ref={videoRef}
       src={src}
       aria-label={label}
       // 브라우저는 소리 있는 영상의 자동 재생을 막아서 muted가 꼭 있어야 한다
